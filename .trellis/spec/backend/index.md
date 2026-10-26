@@ -14,11 +14,11 @@ This directory contains guidelines for backend development. Fill in each file wi
 
 | Guide | Description | Status |
 |-------|-------------|--------|
-| [Directory Structure](./directory-structure.md) | Module organization and file layout | To fill |
-| [Database Guidelines](./database-guidelines.md) | ORM patterns, queries, migrations | To fill |
-| [Error Handling](./error-handling.md) | Error types, handling strategies | To fill |
-| [Quality Guidelines](./quality-guidelines.md) | Code standards, forbidden patterns | To fill |
-| [Logging Guidelines](./logging-guidelines.md) | Structured logging, log levels | To fill |
+| [Directory Structure](./directory-structure.md) | Rust 模块职责与新增 command 步骤 | Filled |
+| [Database Guidelines](./database-guidelines.md) | JSON 持久化、旧版兼容与数据目录不变量 | Filled |
+| [Error Handling](./error-handling.md) | 中文错误字符串与数据安全错误策略 | Filled |
+| [Quality Guidelines](./quality-guidelines.md) | CI clippy 常见拦截写法与设计约束 | Filled |
+| [Logging Guidelines](./logging-guidelines.md) | tauri-plugin-log 与必记事件 | Filled |
 
 ---
 

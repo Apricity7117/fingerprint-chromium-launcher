@@ -1,51 +1,6 @@
-# Type Safety
+# 类型安全
 
-> Type safety patterns in this project.
-
----
-
-## Overview
-
-<!--
-Document your project's type safety conventions here.
-
-Questions to answer:
-- What type system do you use?
-- How are types organized?
-- What validation library do you use?
-- How do you handle type inference?
--->
-
-(To be filled by the team)
-
----
-
-## Type Organization
-
-<!-- Where types are defined, shared types vs local types -->
-
-(To be filled by the team)
-
----
-
-## Validation
-
-<!-- Runtime validation patterns (Zod, Yup, io-ts, etc.) -->
-
-(To be filled by the team)
-
----
-
-## Common Patterns
-
-<!-- Type utilities, generics, type guards -->
-
-(To be filled by the team)
-
----
-
-## Forbidden Patterns
-
-<!-- any, type assertions, etc. -->
-
-(To be filled by the team)
+- `src/lib/types.ts` 与 `src-tauri/src/models.rs` 一一对应，字段保持 snake_case；修改任一侧必须同步另一侧与 `dev-mock-backend.ts`。
+- 所有 invoke 经 `src/lib/api.ts`；**command 参数名在 JS 侧为 camelCase**（Rust `delete_data` → `deleteData`，`profiles_path` → `profilesPath`），payload 结构体内部字段仍为 snake_case。
+- Rust 端错误为字符串，统一用 `errorMessage(error)` 转换后展示。
+- JSON 配置（`configs/*.json`）通过 `resolveJsonModule` 推断类型；需要 `string[]` 等宽类型时显式复制（如 `[...presets.new_profile.disable_spoofing]`）。
