@@ -1,0 +1,121 @@
+{
+  "platforms": [
+    { "value": "windows", "label": "Windows (x86)" },
+    { "value": "macos", "label": "macOS (Apple Silicon/MacIntel)" },
+    { "value": "linux", "label": "Linux (x86_64)" }
+  ],
+  "brands": [
+    { "value": "Chrome", "label": "Google Chrome" },
+    { "value": "Edge", "label": "Microsoft Edge" },
+    { "value": "Opera", "label": "Opera" },
+    { "value": "Vivaldi", "label": "Vivaldi" }
+  ],
+  "hardware_concurrency_options": [4, 6, 8, 10, 12, 16],
+  "recommendations": {
+    "macos": {
+      "gpu_vendor": "Apple",
+      "gpu_renderers": [
+        "Apple M1",
+        "Apple M1 Pro",
+        "Apple M2",
+        "Apple M2 Max",
+        "Apple M2 Pro",
+        "Apple M3",
+        "Apple M3 Max",
+        "Apple M3 Pro",
+        "Apple M4",
+        "Apple M4 Max",
+        "Apple M4 Pro"
+      ],
+      "hardware_concurrency": [8, 10, 12, 16]
+    },
+    "windows": {
+      "gpu_vendor": "NVIDIA",
+      "gpu_renderers": [
+        "GeForce RTX 3050",
+        "GeForce RTX 3060",
+        "GeForce RTX 3060 Ti",
+        "GeForce RTX 3070",
+        "GeForce RTX 3080",
+        "GeForce RTX 3090",
+        "GeForce RTX 4060",
+        "GeForce RTX 4070",
+        "GeForce RTX 4080",
+        "GeForce RTX 4090"
+      ],
+      "hardware_concurrency": [4, 6, 8, 12, 16]
+    },
+    "linux": {
+      "gpu_vendor": "NVIDIA Corporation",
+      "gpu_renderers": [
+        "GeForce RTX 3050",
+        "GeForce RTX 3060",
+        "GeForce RTX 3060 Ti",
+        "GeForce RTX 3070",
+        "GeForce RTX 3080",
+        "GeForce RTX 3090",
+        "GeForce RTX 4060",
+        "GeForce RTX 4070",
+        "GeForce RTX 4080",
+        "GeForce RTX 4090"
+      ],
+      "hardware_concurrency": [4, 8, 12, 16]
+    }
+  },
+  "apple_gpu_renderers": [
+    "Apple M1",
+    "Apple M1 Pro",
+    "Apple M1 Max",
+    "Apple M2",
+    "Apple M2 Pro",
+    "Apple M2 Max",
+    "Apple M3",
+    "Apple M3 Pro",
+    "Apple M3 Max",
+    "Apple M4",
+    "Apple M4 Pro",
+    "Apple M4 Max",
+    "Apple M5",
+    "Apple M5 Pro",
+    "Apple M5 Max"
+  ],
+  "apple_chip_cores": [
+    { "chip": "M5", "base": 12, "pro_max": 12 },
+    { "chip": "M4", "base": 10, "pro_max": 10 },
+    { "chip": "M3", "base": 8, "pro_max": 12 },
+    { "chip": "M2", "base": 8, "pro_max": 10 },
+    { "chip": "M1", "base": 8, "pro_max": 10 }
+  ],
+  "apple_chip_cores_fallback": 8,
+  "timezones": ["Asia/Shanghai", "America/Los_Angeles"],
+  "languages": [
+    { "lang": "zh-CN", "accept_lang": "zh-CN,zh" },
+    { "lang": "en-US", "accept_lang": "en-US,en" }
+  ],
+  "spoofing_options": [
+    { "value": "font", "label": "字体" },
+    { "value": "audio", "label": "音频" },
+    { "value": "canvas", "label": "Canvas" },
+    { "value": "clientrects", "label": "ClientRects" },
+    { "value": "gpu", "label": "GPU" }
+  ],
+  "new_profile": {
+    "group": "",
+    "platform": "macos",
+    "brand": "Chrome",
+    "brand_version": "",
+    "hardware_concurrency": 8,
+    "gpu_vendor": "Apple",
+    "gpu_renderer": "Apple M1",
+    "platform_version": "",
+    "timezone": "America/Los_Angeles",
+    "lang": "en-US",
+    "accept_lang": "en-US,en",
+    "proxy_server": "",
+    "disable_non_proxied_udp": true,
+    "disable_gpu_fingerprint": false,
+    "disable_encryption": false,
+    "extra_args": "",
+    "disable_spoofing": []
+  }
+}

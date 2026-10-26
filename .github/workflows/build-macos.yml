@@ -1,0 +1,50 @@
+# macOS（Apple Silicon）打包，仅按需手动触发：gh workflow run build-macos.yml --ref <分支>
+name: Build macOS
+
+on:
+  workflow_dispatch:
+
+concurrency:
+  group: build-macos-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: pnpm/action-setup@v6
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 24
+          cache: pnpm
+
+      - run: pnpm install --frozen-lockfile
+
+      - uses: dtolnay/rust-toolchain@stable
+
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: "src-tauri -> target"
+
+      - name: 构建 .app 与 .dmg
+        run: pnpm tauri build --bundles app,dmg
+
+      - name: 打包 .app（保留符号链接与权限）
+        run: |
+          cd src-tauri/target/release/bundle/macos
+          ditto -c -k --keepParent "Fingerprint Chromium Launcher.app" "$GITHUB_WORKSPACE/fingerprint-chromium-launcher-macos.zip"
+
+      - uses: actions/upload-artifact@v7
+        with:
+          name: macos-app
+          path: fingerprint-chromium-launcher-macos.zip
+          if-no-files-found: error
+
+      - uses: actions/upload-artifact@v7
+        with:
+          name: macos-dmg
+          path: src-tauri/target/release/bundle/dmg/*.dmg
+          if-no-files-found: error

@@ -1,0 +1,109 @@
+# Rust 检查与 Linux E2E。前端 lint / 单测 / 构建在本地完成，不占用 Actions。
+# 节制策略：push 带 paths 过滤；macOS 测试与 E2E 仅在提交信息含 [macos] / [e2e] 或手动启用时运行。
+name: CI
+
+on:
+  push:
+    branches: ["feat/**", "main"]
+    paths:
+      - "src-tauri/**"
+      - "configs/**"
+      - "e2e/**"
+      - "src/**"
+      - "package.json"
+      - "pnpm-lock.yaml"
+      - ".github/workflows/ci.yml"
+  workflow_dispatch:
+    inputs:
+      macos:
+        description: "运行 macOS Rust 测试"
+        type: boolean
+        default: false
+      e2e:
+        description: "运行 Linux E2E"
+        type: boolean
+        default: false
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: write
+
+env:
+  CARGO_TERM_COLOR: always
+  MANIFEST: src-tauri/Cargo.toml
+
+jobs:
+  rust-linux:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: 安装 Tauri Linux 依赖
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libwebkit2gtk-4.1-dev build-essential file libxdo-dev libssl-dev libayatana-appindicator3-dev librsvg2-dev
+
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          components: rustfmt, clippy
+
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: "src-tauri -> target"
+
+      - name: 准备前端产物占位（generate_context! 要求 frontendDist 存在）
+        run: mkdir -p dist && echo '<!doctype html><title>placeholder</title>' > dist/index.html
+
+      - name: cargo fmt（开发分支自动格式化）
+        if: github.ref != 'refs/heads/main'
+        run: cargo fmt --manifest-path "$MANIFEST" --all
+
+      - name: cargo fmt --check（main）
+        if: github.ref == 'refs/heads/main'
+        run: cargo fmt --manifest-path "$MANIFEST" --all -- --check
+
+      - name: cargo clippy
+        run: cargo clippy --manifest-path "$MANIFEST" --all-targets -- -D warnings
+
+      - name: cargo test
+        run: cargo test --manifest-path "$MANIFEST"
+
+      # 本机无 Rust 工具链：由 CI 回推 rustfmt 结果与 Cargo.lock（GITHUB_TOKEN 推送不会再次触发 workflow）
+      - name: 回推格式化与 Cargo.lock（开发分支）
+        if: always() && github.ref != 'refs/heads/main'
+        run: |
+          git add src-tauri
+          if git diff --cached --quiet; then
+            echo "无需回推"
+            exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git commit -m "💄 style: CI 自动格式化与更新 Cargo.lock"
+          git push origin "HEAD:${GITHUB_REF_NAME}" || echo "::warning::回推失败（分支可能已更新），请本地 pull 后重试"
+
+  rust-macos:
+    if: contains(github.event.head_commit.message, '[macos]') || inputs.macos
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          components: clippy
+
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: "src-tauri -> target"
+
+      - name: 准备前端产物占位
+        run: mkdir -p dist && echo '<!doctype html><title>placeholder</title>' > dist/index.html
+
+      - name: cargo clippy
+        run: cargo clippy --manifest-path "$MANIFEST" --all-targets -- -D warnings
+
+      - name: cargo test
+        run: cargo test --manifest-path "$MANIFEST"
