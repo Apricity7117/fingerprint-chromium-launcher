@@ -15,6 +15,11 @@ export default defineConfig(() => ({
     },
   },
 
+  // 桌面应用从本地加载资源，单包体积不影响首屏，放宽分包告警阈值
+  build: {
+    chunkSizeWarningLimit: 800,
+  },
+
   // Tauri 开发约定：不清屏以保留 Rust 报错，固定端口，忽略 src-tauri 变更
   clearScreen: false,
   server: {
