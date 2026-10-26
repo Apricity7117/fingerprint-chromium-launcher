@@ -103,8 +103,8 @@ fn version_from_binary(executable: &Path, timeout: Duration) -> Option<String> {
 pub fn detect_version(chromium_path: &str) -> ChromiumInfo {
     let executable = expand_tilde(chromium_path);
     let timeout = Duration::from_millis(DEFAULTS.version_detect_timeout_ms);
-    let version = version_from_bundle(&executable)
-        .or_else(|| version_from_binary(&executable, timeout));
+    let version =
+        version_from_bundle(&executable).or_else(|| version_from_binary(&executable, timeout));
     let major = version.as_deref().and_then(major_of);
     ChromiumInfo {
         version,
@@ -118,7 +118,8 @@ pub fn parse_extra_args(extra_args: &str) -> Result<Vec<String>, String> {
     if extra_args.trim().is_empty() {
         return Ok(Vec::new());
     }
-    shlex::split(extra_args).ok_or_else(|| format!("额外启动参数无法解析（请检查引号是否成对）: {extra_args}"))
+    shlex::split(extra_args)
+        .ok_or_else(|| format!("额外启动参数无法解析（请检查引号是否成对）: {extra_args}"))
 }
 
 fn has_disable_encryption_arg(args: &[String]) -> bool {
@@ -270,8 +271,12 @@ mod tests {
 
     #[test]
     fn legacy_args_match_server_py_order() {
-        let args = build_args(&sample_profile(), Path::new("/d/chrome_f7c25865"), FlagMode::Legacy)
-            .unwrap();
+        let args = build_args(
+            &sample_profile(),
+            Path::new("/d/chrome_f7c25865"),
+            FlagMode::Legacy,
+        )
+        .unwrap();
         assert_eq!(
             args,
             [
@@ -327,7 +332,11 @@ mod tests {
         };
         let args = build_args(&profile, Path::new("/d/x"), FlagMode::Legacy).unwrap();
         assert!(!args.iter().any(|a| a.starts_with("--fingerprint=")));
-        assert!(!args.iter().any(|a| a.starts_with("--fingerprint-hardware-concurrency")));
+        assert!(
+            !args
+                .iter()
+                .any(|a| a.starts_with("--fingerprint-hardware-concurrency"))
+        );
         assert!(!args.iter().any(|a| a.starts_with("--timezone")));
         assert!(!args.iter().any(|a| a.starts_with("--fingerprint-gpu")));
         assert!(!args.contains(&"--disable-non-proxied-udp".to_string()));
@@ -342,17 +351,29 @@ mod tests {
             ..sample_profile()
         };
         let args = build_args(&profile, Path::new("/d/x"), FlagMode::Legacy).unwrap();
-        let count = args.iter().filter(|a| a.as_str() == "--disable-encryption").count();
+        let count = args
+            .iter()
+            .filter(|a| a.as_str() == "--disable-encryption")
+            .count();
         assert_eq!(count, 1);
-        assert_eq!(args.last().map(String::as_str), Some("--custom-ntp=about:blank"));
+        assert_eq!(
+            args.last().map(String::as_str),
+            Some("--custom-ntp=about:blank")
+        );
 
         let profile = Profile {
             disable_encryption: true,
             ..sample_profile()
         };
         let args = build_args(&profile, Path::new("/d/x"), FlagMode::Legacy).unwrap();
-        let encryption_pos = args.iter().position(|a| a == "--disable-encryption").unwrap();
-        let dir_pos = args.iter().position(|a| a.starts_with("--user-data-dir=")).unwrap();
+        let encryption_pos = args
+            .iter()
+            .position(|a| a == "--disable-encryption")
+            .unwrap();
+        let dir_pos = args
+            .iter()
+            .position(|a| a.starts_with("--user-data-dir="))
+            .unwrap();
         assert!(encryption_pos < dir_pos);
     }
 
@@ -380,7 +401,10 @@ mod tests {
     #[test]
     fn shell_quote_only_when_needed() {
         assert_eq!(shell_quote("--lang=en-US"), "--lang=en-US");
-        assert_eq!(shell_quote("--accept-lang=en-US,en"), "--accept-lang=en-US,en");
+        assert_eq!(
+            shell_quote("--accept-lang=en-US,en"),
+            "--accept-lang=en-US,en"
+        );
         assert_eq!(shell_quote("it's"), "'it'\\''s'");
         assert_eq!(shell_quote(""), "''");
     }
@@ -391,7 +415,10 @@ mod tests {
             parse_version("Chromium 142.0.7444.175 \n").as_deref(),
             Some("142.0.7444.175")
         );
-        assert_eq!(parse_version("Google Chrome 150.0.7871.186 unknown").as_deref(), Some("150.0.7871.186"));
+        assert_eq!(
+            parse_version("Google Chrome 150.0.7871.186 unknown").as_deref(),
+            Some("150.0.7871.186")
+        );
         assert_eq!(parse_version("no version here 1.2"), None);
         assert_eq!(major_of("142.0.7444.175"), Some(142));
         assert_eq!(flag_mode(Some(142)), FlagMode::Legacy);

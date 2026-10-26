@@ -19,8 +19,9 @@ pub struct Store {
 fn read_profiles_file(path: &Path) -> Result<Vec<Profile>, String> {
     match fs::read_to_string(path) {
         Ok(content) if content.trim().is_empty() => Ok(Vec::new()),
-        Ok(content) => serde_json::from_str(&content)
-            .map_err(|e| format!("解析 {} 失败: {e}", path.display())),
+        Ok(content) => {
+            serde_json::from_str(&content).map_err(|e| format!("解析 {} 失败: {e}", path.display()))
+        }
         Err(e) if e.kind() == io::ErrorKind::NotFound => Ok(Vec::new()),
         Err(e) => Err(format!("读取 {} 失败: {e}", path.display())),
     }

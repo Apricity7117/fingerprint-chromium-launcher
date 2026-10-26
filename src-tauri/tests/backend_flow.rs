@@ -84,7 +84,12 @@ fn process_ignoring_sigterm_is_force_killed() {
     assert!(started.elapsed() >= Duration::from_millis(600));
     assert!(wait_for(Duration::from_secs(2), || !process::is_alive(pid)));
     // 强杀后残留的陈旧锁不应被识别为运行中
-    assert!(user_data_dir.join("SingletonLock").symlink_metadata().is_ok());
+    assert!(
+        user_data_dir
+            .join("SingletonLock")
+            .symlink_metadata()
+            .is_ok()
+    );
     assert_eq!(detector.running_pid("p", &user_data_dir), None);
 }
 
@@ -131,12 +136,20 @@ fn full_profile_lifecycle() {
 
     // 启动器「重启」后仍能识别运行中的实例
     let restarted = AppState::new(root.path().join("app-data"));
-    assert!(restarted.running_status().unwrap().contains_key(&profile.id));
+    assert!(
+        restarted
+            .running_status()
+            .unwrap()
+            .contains_key(&profile.id)
+    );
     assert!(restarted.launch(&profile.id).is_err());
 
     restarted.stop(&profile.id).unwrap();
     assert!(wait_for(Duration::from_secs(3), || {
-        !restarted.running_status().unwrap().contains_key(&profile.id)
+        !restarted
+            .running_status()
+            .unwrap()
+            .contains_key(&profile.id)
     }));
 
     let result = restarted
@@ -167,7 +180,9 @@ fn deleting_running_profile_stops_it_first() {
         .delete_profiles(std::slice::from_ref(&profile.id), false)
         .unwrap();
     assert_eq!(result.deleted.len(), 1);
-    assert!(wait_for(Duration::from_secs(2), || !process::is_alive(launched.pid)));
+    assert!(wait_for(Duration::from_secs(2), || !process::is_alive(
+        launched.pid
+    )));
     // 未勾选删除数据时保留目录
     assert!(chromium::user_data_dir(&settings, &profile.id).exists());
 }

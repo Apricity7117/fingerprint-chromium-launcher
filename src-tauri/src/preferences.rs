@@ -81,7 +81,10 @@ mod tests {
         assert_eq!(prefs["bookmark_bar"]["show_tab_groups"], false);
         assert_eq!(prefs["credentials_enable_service"], true);
         assert_eq!(prefs["credentials_enable_autosignin"], true);
-        assert_eq!(prefs["password_manager"]["automatic_passkey_upgrades"], true);
+        assert_eq!(
+            prefs["password_manager"]["automatic_passkey_upgrades"],
+            true
+        );
     }
 
     #[test]
@@ -100,7 +103,10 @@ mod tests {
         let prefs = read(dir.path());
         assert_eq!(prefs["bookmark_bar"]["show_on_all_tabs"], true);
         assert_eq!(prefs["bookmark_bar"]["show_tab_groups"], false);
-        assert_eq!(prefs["password_manager"]["automatic_passkey_upgrades"], true);
+        assert_eq!(
+            prefs["password_manager"]["automatic_passkey_upgrades"],
+            true
+        );
         assert_eq!(prefs["profile"]["name"], "x");
     }
 

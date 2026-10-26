@@ -210,8 +210,8 @@ impl Detector {
             .into_iter()
             .filter_map(|(id, pid)| {
                 let process = self.system.process(Pid::from_u32(pid))?;
-                let running = process.status() != ProcessStatus::Zombie
-                    && is_browser_main(process.cmd());
+                let running =
+                    process.status() != ProcessStatus::Zombie && is_browser_main(process.cmd());
                 running.then(|| {
                     let status = InstanceStatus {
                         pid,
@@ -261,7 +261,10 @@ pub fn remove_data_dir(prefix: &Path, dir_name: &str) -> Result<bool, String> {
         .canonicalize()
         .map_err(|e| format!("解析数据目录失败 {}: {e}", target.display()))?;
     if canonical_target.parent() != Some(canonical_prefix.as_path()) {
-        return Err(format!("数据目录不在前缀之下，拒绝删除: {}", target.display()));
+        return Err(format!(
+            "数据目录不在前缀之下，拒绝删除: {}",
+            target.display()
+        ));
     }
     fs::remove_dir_all(canonical_target.as_path())
         .map_err(|e| format!("删除数据目录失败 {}: {e}", target.display()))?;
@@ -342,7 +345,13 @@ mod tests {
         assert!(!good.exists());
         assert!(!remove_data_dir(prefix.path(), "chrome_0123abcd").unwrap());
 
-        for bad in ["../etc", "chrome_", "chrome_0123abcz", "chrome_0123abcd/..", "Default"] {
+        for bad in [
+            "../etc",
+            "chrome_",
+            "chrome_0123abcz",
+            "chrome_0123abcd/..",
+            "Default",
+        ] {
             assert!(remove_data_dir(prefix.path(), bad).is_err(), "{bad}");
         }
 

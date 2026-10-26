@@ -102,7 +102,10 @@ impl AppState {
 
         let executable = expand_tilde(&settings.chromium_path);
         let command = chromium::command_display(&executable, &args);
-        if args.iter().any(|arg| arg.starts_with("--disable-encryption")) {
+        if args
+            .iter()
+            .any(|arg| arg.starts_with("--disable-encryption"))
+        {
             log::warn!("环境 {id} 使用 --disable-encryption，本地 Cookie / 密码保护强度降低");
         }
         let pid = process::spawn_detached(&executable, &args)?;
