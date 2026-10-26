@@ -1,0 +1,24 @@
+# 依赖与构建产物
+node_modules/
+dist/
+dist-ssr/
+*.local
+
+# Tauri / Rust
+src-tauri/target/
+src-tauri/gen/schemas/
+
+# E2E 输出
+e2e/screenshots/
+e2e/.tmp/
+
+# 日志
+*.log
+npm-debug.log*
+pnpm-debug.log*
+
+# 编辑器与系统文件
+.vscode/*
+!.vscode/extensions.json
+.idea/
+.DS_Store
