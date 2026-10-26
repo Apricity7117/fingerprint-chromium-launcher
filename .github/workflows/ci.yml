@@ -107,3 +107,93 @@ jobs:
 
       - name: cargo test
         run: cargo test --manifest-path "$MANIFEST"
+
+  e2e-linux:
+    needs: rust-linux
+    if: contains(github.event.head_commit.message, '[e2e]') || inputs.e2e
+    runs-on: ubuntu-24.04
+    env:
+      CHROMIUM_VERSION: 142.0.7444.175
+      TAURI_DRIVER_VERSION: 2.1.0
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: 安装 Tauri 依赖、WebKitWebDriver 与 Xvfb
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libwebkit2gtk-4.1-dev build-essential file libxdo-dev libssl-dev libayatana-appindicator3-dev librsvg2-dev webkit2gtk-driver xvfb
+
+      - name: 允许非特权 user namespace（Chromium 沙箱需要）
+        run: sudo sysctl -w kernel.apparmor_restrict_unprivileged_userns=0 || true
+
+      - uses: pnpm/action-setup@v6
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 24
+          cache: pnpm
+          cache-dependency-path: |
+            pnpm-lock.yaml
+            e2e/pnpm-lock.yaml
+
+      - name: 安装前端与 E2E 依赖
+        run: |
+          pnpm install --frozen-lockfile
+          pnpm --dir e2e install --frozen-lockfile
+
+      - uses: dtolnay/rust-toolchain@stable
+
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: "src-tauri -> target"
+
+      - name: 缓存 tauri-driver
+        id: tauri-driver-cache
+        uses: actions/cache@v6
+        with:
+          path: ~/.cargo/bin/tauri-driver
+          key: tauri-driver-${{ env.TAURI_DRIVER_VERSION }}-${{ runner.os }}
+
+      - name: 安装 tauri-driver
+        if: steps.tauri-driver-cache.outputs.cache-hit != 'true'
+        run: cargo install tauri-driver --locked --version "$TAURI_DRIVER_VERSION"
+
+      - name: 缓存 fingerprint-chromium
+        id: chromium-cache
+        uses: actions/cache@v6
+        with:
+          path: ~/fingerprint-chromium
+          key: fingerprint-chromium-${{ env.CHROMIUM_VERSION }}-linux
+
+      - name: 下载 fingerprint-chromium Linux 版
+        if: steps.chromium-cache.outputs.cache-hit != 'true'
+        run: |
+          mkdir -p ~/fingerprint-chromium
+          curl -fsSL -o /tmp/chromium.tar.xz \
+            "https://github.com/adryfish/fingerprint-chromium/releases/download/${CHROMIUM_VERSION}/ungoogled-chromium-${CHROMIUM_VERSION}-1-x86_64_linux.tar.xz"
+          tar -xJf /tmp/chromium.tar.xz -C ~/fingerprint-chromium --strip-components=1
+
+      - name: 检查 Chromium
+        run: ~/fingerprint-chromium/chrome --version
+
+      - name: 构建应用（debug，不打包）
+        run: pnpm tauri build --debug --no-bundle
+
+      - name: 运行 E2E（xvfb）
+        run: |
+          export E2E_CHROMIUM="$HOME/fingerprint-chromium/chrome"
+          export E2E_BROWSER_DATA="$RUNNER_TEMP/fcl-browser-data"
+          export XDG_DATA_HOME="$RUNNER_TEMP/fcl-xdg-data"
+          export XDG_CONFIG_HOME="$RUNNER_TEMP/fcl-xdg-config"
+          # xvfb 下关闭 WebKit 合成与 DMABUF 渲染，避免白屏
+          export WEBKIT_DISABLE_COMPOSITING_MODE=1
+          export WEBKIT_DISABLE_DMABUF_RENDERER=1
+          xvfb-run --auto-servernum --server-args="-screen 0 1440x900x24" pnpm --dir e2e test
+
+      - name: 上传 E2E 截图
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: e2e-screenshots
+          path: e2e/screenshots
+          if-no-files-found: ignore

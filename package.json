@@ -10,7 +10,7 @@
     "tauri": "tauri",
     "lint": "eslint .",
     "test": "vitest run",
-    "e2e": "wdio run e2e/wdio.conf.ts"
+    "e2e": "pnpm --dir e2e test"
   },
   "dependencies": {
     "@fontsource-variable/geist": "^5.3.0",

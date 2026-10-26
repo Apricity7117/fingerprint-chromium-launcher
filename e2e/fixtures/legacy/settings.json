@@ -1,0 +1,5 @@
+{
+  "chromium_path": "/opt/legacy/chromium",
+  "data_dir_prefix": "/tmp/legacy-browser-data",
+  "port": 18080
+}
