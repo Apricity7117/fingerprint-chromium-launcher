@@ -34,7 +34,7 @@ pnpm lint && pnpm test && pnpm build
 
 1. 本地能完成的检查（前端 lint / vitest / build）**不上 CI**，推送前必须本地通过。
 2. 本地按小步 commit，**攒批到验证检查点再 push**；不要每个小改动都推送。
-3. `ci.yml` 的 push 触发带 `paths` 过滤：`.trellis/**`、`*.md` 等文档改动不会触发；只推文档时无需顾虑。
+3. `ci.yml` 的 push 触发带 `paths` 过滤（`src-tauri/**`、`configs/**`、`e2e/**`、`src/**`、`package.json`、`pnpm-lock.yaml`、workflow 与 `.github/actions/**`）：`.trellis/**`、`*.md` 等文档改动不会触发；注意纯前端（`src/**`）改动也会触发常驻的 `rust-linux`，同样要攒批。
 4. 重型 job 按需启用：提交信息含 `[e2e]` 才跑 Linux E2E，含 `[macos]` 才跑 macOS Rust 测试与 macOS 打包。
 5. 推送前自审 Rust 代码（类型、借用、clippy 常见告警、`cargo fmt` 风格），尽量一次通过。
 6. 全任务运行目标 ≤ 20 次；接近上限时先复盘失败原因，再决定是否继续推送。收尾报告如实列出运行次数。
@@ -111,6 +111,15 @@ gh run view "$RUN_ID" --log-failed | tail -200
 - `e2e/` 是独立 pnpm 项目（自有 `pnpm-lock.yaml`）；pnpm 11 需在 `e2e/pnpm-workspace.yaml` 用 `allowBuilds` 显式声明依赖构建脚本（esbuild 允许，Edge / Gecko 驱动下载禁止），否则安装直接失败。
 - WebKitWebDriver 不支持 BiDi：capabilities 需 `wdio:enforceWebDriverClassic: true`；WebDriver 的 clear 不一定触发 React onChange，清空输入框用键盘全选删除。
 - 测试环境用 `XDG_DATA_HOME` / `XDG_CONFIG_HOME` 指向临时目录隔离应用数据；`--no-sandbox`、`--password-store=basic` 等只写在测试环境的 extra_args，不进默认配置。
+- 渲染环境：xvfb 下设置 `WEBKIT_DISABLE_COMPOSITING_MODE=1`、`WEBKIT_DISABLE_DMABUF_RENDERER=1`，否则 WebKitGTK 白屏。
+
+### WebdriverIO 10 + WebKitWebDriver 实测踩坑
+
+- **`executeAsync` 已移除**：调用 Tauri command 用 `browser.execute(async (cmd, args) => …, cmd, args)`，传入 async 函数时内部走 `executeAsyncScript` 并等待 Promise；在页面内 try/catch，返回 `{ ok }` / `{ err }`，避免异常被吞成会话错误。
+- **`$$()` 结果不是普通数组**：不能 `Promise.all(rows.map(...))`。批量读取元素信息一律在页面内 `document.querySelectorAll` 后返回纯数据（如列表行 ID 数组）。
+- **`getText` / `toHaveText` 对弹层内元素可能读空**（元素被判为不可见，如 Dialog 动画中）：文本断言统一读 `textContent`（`browser.execute`），`waitUntil` 的 `timeoutMsg` 附带最后读到的实际值，失败时才能看出差异。
+- **残留弹层会连锁失败**：每个用例前（`beforeEach`）与失败后（`afterTest`）检测并按 Escape 关闭 Dialog / Popover，再继续后续用例。
+- **首跑前先做静态预检**：E2E 一次运行成本高（Rust 构建 + 浏览器冷启动）且占用节制的运行额度，提交前执行 `node --check e2e/**/*.mjs`，并对照 `src/` 核对 `data-testid` 是否存在、command 参数名是否为 camelCase。
 
 ---
 
