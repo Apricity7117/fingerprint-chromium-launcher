@@ -1,6 +1,6 @@
 // 仅用于 `pnpm dev` 浏览器预览的内存 mock：数据为合成样例，只返回契约形状的数据，
 // 不复刻 Rust 业务逻辑（参数构建、推荐等以 Rust 实现与 CI E2E 为准）。
-import { presets } from "./presets";
+import { defaults, presets } from "./presets";
 import { dataDirName, newProfileDraft } from "./profile-utils";
 import type { Profile, RunningStatusMap, Settings } from "./types";
 
@@ -63,7 +63,8 @@ const handlers: Record<string, (args: Record<string, unknown>) => unknown> = {
   },
   duplicate_profile: (args) => {
     const source = find(args.id as string);
-    const copy = { ...source, id: randomId(), name: `${source.name} (Copy)` };
+    const fingerprint = Math.floor(Math.random() * defaults.random_seed_max);
+    const copy = { ...source, id: randomId(), name: `${source.name} (Copy)`, fingerprint };
     profiles = [...profiles, copy];
     return copy;
   },
@@ -75,7 +76,7 @@ const handlers: Record<string, (args: Record<string, unknown>) => unknown> = {
   },
   recommend_fingerprint: (args) => {
     const platform = args.platform as keyof typeof presets.recommendations;
-    const seed = (args.seed as number | null) ?? Math.floor(Math.random() * 1_000_000);
+    const seed = (args.seed as number | null) ?? Math.floor(Math.random() * defaults.random_seed_max);
     const table = presets.recommendations[platform];
     return {
       fingerprint: seed,
