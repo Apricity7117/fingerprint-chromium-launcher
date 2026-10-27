@@ -68,7 +68,7 @@ gh run view "$RUN_ID" --log-failed | tail -200
 | `ci.yml` | push `feat/**`、`main`（paths 过滤）、手动 | `rust-linux` | 总是 | 开发分支 `cargo fmt` 自动格式化（main 为 `--check`）→ clippy `--all-targets -D warnings` → test → 回推格式化与 `Cargo.lock` |
 | | | `rust-macos` | `[macos]` / input | clippy → test（macOS 进程与 Info.plist 行为） |
 | | | `e2e-linux` | `[e2e]` / input | Xvfb + tauri-driver + WebKitWebDriver 驱动真实应用与 Linux 版 fingerprint-chromium，上传截图 |
-| `build-macos.yml` | 仅手动：`gh workflow run build-macos.yml --ref <分支>` | `build` | — | Apple Silicon `.app`（zip，artifact `macos-app`）与 `.dmg`（`macos-dmg`） |
+| `build-macos.yml` | 由 `ci.yml` 的 `build-macos` job 调用（`[macos]`）；文件合入 `main` 后也可手动 `gh workflow run` | `build` | `[macos]` / input | Apple Silicon `.app`（zip，artifact `macos-app`）与 `.dmg`（`macos-dmg`） |
 
 前端检查不在 CI 中，由本地负责。
 

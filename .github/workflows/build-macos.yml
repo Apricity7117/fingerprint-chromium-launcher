@@ -1,7 +1,9 @@
-# macOS（Apple Silicon）打包，仅按需手动触发：gh workflow run build-macos.yml --ref <分支>
+# macOS（Apple Silicon）打包：提交信息含 [macos] 时由 ci.yml 调用；
+# workflow_dispatch 要求文件已在默认分支，合入 main 后也可 gh workflow run build-macos.yml --ref <分支>
 name: Build macOS
 
 on:
+  workflow_call:
   workflow_dispatch:
 
 concurrency:
