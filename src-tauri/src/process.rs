@@ -278,9 +278,9 @@ mod tests {
     #[test]
     fn parses_lock_targets() {
         assert_eq!(
-            parse_singleton_lock("madoka-78622"),
+            parse_singleton_lock("example-78622"),
             Some(LockOwner {
-                hostname: "madoka".to_string(),
+                hostname: "example".to_string(),
                 pid: 78622
             })
         );
@@ -295,9 +295,9 @@ mod tests {
 
     #[test]
     fn compares_hostnames_loosely() {
-        assert!(same_host("madoka", "madoka"));
-        assert!(same_host("madoka.local", "Madoka"));
-        assert!(!same_host("madoka", "other"));
+        assert!(same_host("example", "example"));
+        assert!(same_host("example.local", "Example"));
+        assert!(!same_host("example", "other"));
     }
 
     #[test]

@@ -246,7 +246,7 @@ mod tests {
 
     fn sample_profile() -> Profile {
         Profile {
-            id: "f7c25865b20f6ba0".to_string(),
+            id: "0123456789abcdef".to_string(),
             fingerprint: 1024,
             platform: "macos".to_string(),
             gpu_vendor: "Apple".to_string(),
@@ -261,10 +261,10 @@ mod tests {
             chromium_path: "chromium".to_string(),
             data_dir_prefix: "/data/".to_string(),
         };
-        assert_eq!(data_dir_name("f7c25865b20f6ba0"), "chrome_f7c25865");
+        assert_eq!(data_dir_name("0123456789abcdef"), "chrome_01234567");
         assert_eq!(
-            user_data_dir(&settings, "f7c25865b20f6ba0"),
-            PathBuf::from("/data/chrome_f7c25865")
+            user_data_dir(&settings, "0123456789abcdef"),
+            PathBuf::from("/data/chrome_01234567")
         );
         assert!(user_data_dir(&settings, "").ends_with(PENDING_DATA_DIR_NAME));
     }
@@ -273,7 +273,7 @@ mod tests {
     fn legacy_args_match_server_py_order() {
         let args = build_args(
             &sample_profile(),
-            Path::new("/d/chrome_f7c25865"),
+            Path::new("/d/chrome_01234567"),
             FlagMode::Legacy,
         )
         .unwrap();
@@ -291,7 +291,7 @@ mod tests {
                 "--lang=en-US",
                 "--accept-lang=en-US,en",
                 "--disable-non-proxied-udp",
-                "--user-data-dir=/d/chrome_f7c25865",
+                "--user-data-dir=/d/chrome_01234567",
             ]
         );
     }

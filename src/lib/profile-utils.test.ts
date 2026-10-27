@@ -64,7 +64,7 @@ describe("默认值与联动", () => {
   });
 
   it("数据目录名取 id 前 8 位", () => {
-    expect(dataDirName("f7c25865b20f6ba0")).toBe("chrome_f7c25865");
+    expect(dataDirName("0123456789abcdef")).toBe("chrome_01234567");
   });
 
   it("Apple 芯片核心数与旧版规则一致", () => {
