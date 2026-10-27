@@ -18,9 +18,10 @@ export function useRunningStatus() {
 
   useEffect(() => {
     let timer: number | undefined;
+    // 挂载时无论可见与否先取一次，仅在可见时持续轮询
     const start = () => {
       void refresh();
-      timer = window.setInterval(() => void refresh(), defaults.status_poll_interval_ms);
+      if (!document.hidden) timer = window.setInterval(() => void refresh(), defaults.status_poll_interval_ms);
     };
     const stop = () => window.clearInterval(timer);
     const onVisibilityChange = () => {
@@ -28,7 +29,7 @@ export function useRunningStatus() {
       if (!document.hidden) start();
     };
 
-    if (!document.hidden) start();
+    start();
     document.addEventListener("visibilitychange", onVisibilityChange);
     return () => {
       stop();
