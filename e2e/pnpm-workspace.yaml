@@ -1,0 +1,5 @@
+# pnpm 11 需显式声明依赖构建脚本：E2E 使用 WebKitWebDriver，不需要下载 Edge / Gecko 驱动
+allowBuilds:
+  edgedriver: false
+  esbuild: true
+  geckodriver: false

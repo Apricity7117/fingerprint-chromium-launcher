@@ -1,51 +1,14 @@
-# Quality Guidelines
+# 前端质量规范
 
-> Code quality standards for frontend development.
+## 本地检查（推送前必过，CI 不再重复）
 
----
+```bash
+pnpm lint && pnpm test && pnpm build
+```
 
-## Overview
+## 规则
 
-<!--
-Document your project's quality standards here.
-
-Questions to answer:
-- What patterns are forbidden?
-- What linting rules do you enforce?
-- What are your testing requirements?
-- What code review standards apply?
--->
-
-(To be filled by the team)
-
----
-
-## Forbidden Patterns
-
-<!-- Patterns that should never be used and why -->
-
-(To be filled by the team)
-
----
-
-## Required Patterns
-
-<!-- Patterns that must always be used -->
-
-(To be filled by the team)
-
----
-
-## Testing Requirements
-
-<!-- What level of testing is expected -->
-
-(To be filled by the team)
-
----
-
-## Code Review Checklist
-
-<!-- What reviewers should check -->
-
-(To be filled by the team)
+- 界面改动在 `pnpm dev`（端口固定 1420，已被占用说明开发服务器已在运行，直接复用）+ chrome-devtools-profile（或 headless Chrome + CDP）中截图自查（亮 / 暗、卡片 / 列表、1280×820 默认窗口宽度下列表不溢出）。
+- 生产构建不得包含 `dev-mock-backend`：`api.ts` 中以 `import.meta.env.DEV && !isTauri()` 包裹动态 import；生产构建后用 `grep -c "mock 未实现" dist/assets/*.js` 确认为 0（函数名会被压缩，需按字符串特征检查）。
+- 依赖版本：`@tanstack/react-table` 锁定 v8（v9 API 与 shadcn 示例不兼容）；shadcn 组件依赖其官方 `cn` 包。
+- 禁止：在 mock 中实现业务逻辑；在组件中拼接启动命令；在组件中硬编码选项列表（应放 `configs/`）。

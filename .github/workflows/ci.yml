@@ -1,0 +1,208 @@
+# Rust 检查与 Linux E2E。前端 lint / 单测 / 构建在本地完成，不占用 Actions。
+# 节制策略：push 带 paths 过滤；macOS 测试与 E2E 仅在提交信息含 [macos] / [e2e] 或手动启用时运行。
+name: CI
+
+on:
+  push:
+    branches: ["feat/**", "main"]
+    paths:
+      - "src-tauri/**"
+      - "configs/**"
+      - "e2e/**"
+      - "src/**"
+      - "package.json"
+      - "pnpm-lock.yaml"
+      - ".github/workflows/ci.yml"
+      - ".github/workflows/build-macos.yml"
+      - ".github/actions/**"
+  workflow_dispatch:
+    inputs:
+      macos:
+        description: "运行 macOS Rust 测试"
+        type: boolean
+        default: false
+      e2e:
+        description: "运行 Linux E2E"
+        type: boolean
+        default: false
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: write
+
+env:
+  CARGO_TERM_COLOR: always
+  MANIFEST: src-tauri/Cargo.toml
+
+jobs:
+  rust-linux:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 40
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: 安装 Tauri Linux 依赖
+        timeout-minutes: 15
+        uses: ./.github/actions/setup-tauri-linux
+
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          components: rustfmt, clippy
+
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: "src-tauri -> target"
+
+      - name: 准备前端产物占位（generate_context! 要求 frontendDist 存在）
+        run: mkdir -p dist && echo '<!doctype html><title>placeholder</title>' > dist/index.html
+
+      - name: cargo fmt（开发分支自动格式化）
+        if: github.ref != 'refs/heads/main'
+        run: cargo fmt --manifest-path "$MANIFEST" --all
+
+      - name: cargo fmt --check（main）
+        if: github.ref == 'refs/heads/main'
+        run: cargo fmt --manifest-path "$MANIFEST" --all -- --check
+
+      - name: cargo clippy
+        run: cargo clippy --manifest-path "$MANIFEST" --all-targets -- -D warnings
+
+      - name: cargo test
+        run: cargo test --manifest-path "$MANIFEST"
+
+      # 本机无 Rust 工具链：由 CI 回推 rustfmt 结果与 Cargo.lock（GITHUB_TOKEN 推送不会再次触发 workflow）
+      - name: 回推格式化与 Cargo.lock（开发分支）
+        if: always() && github.ref != 'refs/heads/main'
+        run: |
+          git add src-tauri
+          if git diff --cached --quiet; then
+            echo "无需回推"
+            exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git commit -m "💄 style: CI 自动格式化与更新 Cargo.lock"
+          git push origin "HEAD:${GITHUB_REF_NAME}" || echo "::warning::回推失败（分支可能已更新），请本地 pull 后重试"
+
+  build-macos:
+    if: contains(github.event.head_commit.message, '[macos]') || inputs.macos
+    uses: ./.github/workflows/build-macos.yml
+
+  rust-macos:
+    if: contains(github.event.head_commit.message, '[macos]') || inputs.macos
+    runs-on: macos-latest
+    timeout-minutes: 40
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          components: clippy
+
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: "src-tauri -> target"
+
+      - name: 准备前端产物占位
+        run: mkdir -p dist && echo '<!doctype html><title>placeholder</title>' > dist/index.html
+
+      - name: cargo clippy
+        run: cargo clippy --manifest-path "$MANIFEST" --all-targets -- -D warnings
+
+      - name: cargo test
+        run: cargo test --manifest-path "$MANIFEST"
+
+  e2e-linux:
+    needs: rust-linux
+    if: contains(github.event.head_commit.message, '[e2e]') || inputs.e2e
+    runs-on: ubuntu-24.04
+    timeout-minutes: 60
+    env:
+      CHROMIUM_VERSION: 142.0.7444.175
+      TAURI_DRIVER_VERSION: 2.1.0
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: 安装 Tauri 依赖、WebKitWebDriver 与 Xvfb
+        timeout-minutes: 15
+        uses: ./.github/actions/setup-tauri-linux
+        with:
+          extra-packages: webkit2gtk-driver xvfb fonts-noto-cjk
+
+      - name: 允许非特权 user namespace（Chromium 沙箱需要）
+        run: sudo sysctl -w kernel.apparmor_restrict_unprivileged_userns=0 || true
+
+      - uses: pnpm/action-setup@v6
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 24
+          cache: pnpm
+          cache-dependency-path: |
+            pnpm-lock.yaml
+            e2e/pnpm-lock.yaml
+
+      - name: 安装前端与 E2E 依赖
+        run: |
+          pnpm install --frozen-lockfile
+          pnpm --dir e2e install --frozen-lockfile
+
+      - uses: dtolnay/rust-toolchain@stable
+
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: "src-tauri -> target"
+
+      - name: 缓存 tauri-driver
+        id: tauri-driver-cache
+        uses: actions/cache@v6
+        with:
+          path: ~/.cargo/bin/tauri-driver
+          key: tauri-driver-${{ env.TAURI_DRIVER_VERSION }}-${{ runner.os }}
+
+      - name: 安装 tauri-driver
+        if: steps.tauri-driver-cache.outputs.cache-hit != 'true'
+        run: cargo install tauri-driver --locked --version "$TAURI_DRIVER_VERSION"
+
+      - name: 缓存 fingerprint-chromium
+        id: chromium-cache
+        uses: actions/cache@v6
+        with:
+          path: ~/fingerprint-chromium
+          key: fingerprint-chromium-${{ env.CHROMIUM_VERSION }}-linux
+
+      - name: 下载 fingerprint-chromium Linux 版
+        if: steps.chromium-cache.outputs.cache-hit != 'true'
+        run: |
+          mkdir -p ~/fingerprint-chromium
+          curl -fsSL -o /tmp/chromium.tar.xz \
+            "https://github.com/adryfish/fingerprint-chromium/releases/download/${CHROMIUM_VERSION}/ungoogled-chromium-${CHROMIUM_VERSION}-1-x86_64_linux.tar.xz"
+          tar -xJf /tmp/chromium.tar.xz -C ~/fingerprint-chromium --strip-components=1
+
+      - name: 检查 Chromium
+        run: ~/fingerprint-chromium/chrome --version
+
+      - name: 构建应用（debug，不打包）
+        run: pnpm tauri build --debug --no-bundle
+
+      - name: 运行 E2E（xvfb）
+        run: |
+          export E2E_CHROMIUM="$HOME/fingerprint-chromium/chrome"
+          export E2E_BROWSER_DATA="$RUNNER_TEMP/fcl-browser-data"
+          export XDG_DATA_HOME="$RUNNER_TEMP/fcl-xdg-data"
+          export XDG_CONFIG_HOME="$RUNNER_TEMP/fcl-xdg-config"
+          # xvfb 下关闭 WebKit 合成与 DMABUF 渲染，避免白屏
+          export WEBKIT_DISABLE_COMPOSITING_MODE=1
+          export WEBKIT_DISABLE_DMABUF_RENDERER=1
+          xvfb-run --auto-servernum --server-args="-screen 0 1440x900x24" pnpm --dir e2e test
+
+      - name: 上传 E2E 截图
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: e2e-screenshots
+          path: e2e/screenshots
+          if-no-files-found: ignore

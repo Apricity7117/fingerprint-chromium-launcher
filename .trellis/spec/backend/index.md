@@ -1,38 +1,21 @@
-# Backend Development Guidelines
-
-> Best practices for backend development in this project.
+# 后端开发规范
 
 ---
 
-## Overview
+## 概览
 
-This directory contains guidelines for backend development. Fill in each file with your project's specific conventions.
+后端为 `src-tauri/` 下的 Rust / Tauri 2 单 crate，无 HTTP 服务、无数据库；以下规范均来自真实代码。
 
 ---
 
-## Guidelines Index
+## 规范索引
 
-| Guide | Description | Status |
+| 规范 | 说明 | 状态 |
 |-------|-------------|--------|
-| [Directory Structure](./directory-structure.md) | Module organization and file layout | To fill |
-| [Database Guidelines](./database-guidelines.md) | ORM patterns, queries, migrations | To fill |
-| [Error Handling](./error-handling.md) | Error types, handling strategies | To fill |
-| [Quality Guidelines](./quality-guidelines.md) | Code standards, forbidden patterns | To fill |
-| [Logging Guidelines](./logging-guidelines.md) | Structured logging, log levels | To fill |
+| [Directory Structure](./directory-structure.md) | Rust 模块职责与新增 command 步骤 | 已填写 |
+| [Database Guidelines](./database-guidelines.md) | JSON 持久化、旧版兼容与数据目录不变量 | 已填写 |
+| [Error Handling](./error-handling.md) | 中文错误字符串与数据安全错误策略 | 已填写 |
+| [Quality Guidelines](./quality-guidelines.md) | CI clippy 常见拦截写法与设计约束 | 已填写 |
+| [Logging Guidelines](./logging-guidelines.md) | tauri-plugin-log 与必记事件 | 已填写 |
 
 ---
-
-## How to Fill These Guidelines
-
-For each guideline file:
-
-1. Document your project's **actual conventions** (not ideals)
-2. Include **code examples** from your codebase
-3. List **forbidden patterns** and why
-4. Add **common mistakes** your team has made
-
-The goal is to help AI assistants and new team members understand how YOUR project works.
-
----
-
-**Language**: All documentation should be written in **English**.

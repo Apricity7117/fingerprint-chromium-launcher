@@ -1,0 +1,33 @@
+{
+  "settings": {
+    "macos": {
+      "chromium_path": "/Applications/Chromium.app/Contents/MacOS/Chromium",
+      "data_dir_prefix": "~/Documents/chromium/user_data_dir"
+    },
+    "linux": {
+      "chromium_path": "chromium",
+      "data_dir_prefix": "~/.local/share/fingerprint-chromium/user_data_dir"
+    }
+  },
+  "base_args": ["--no-default-browser-check"],
+  "launcher_preferences": {
+    "bookmark_bar": {
+      "show_tab_groups": false
+    },
+    "credentials_enable_service": true,
+    "credentials_enable_autosignin": true,
+    "password_manager": {
+      "automatic_passkey_upgrades": true
+    }
+  },
+  "status_poll_interval_ms": 2000,
+  "stop_timeout_ms": 2000,
+  "version_detect_timeout_ms": 3000,
+  "spoofing_min_major_version": 144,
+  "default_seed": 1018,
+  "random_seed_max": 1000000,
+  "preview_debounce_ms": 300,
+  "seed_recommend_debounce_ms": 500,
+  "version_detect_debounce_ms": 400,
+  "status_refresh_delay_ms": 1000
+}

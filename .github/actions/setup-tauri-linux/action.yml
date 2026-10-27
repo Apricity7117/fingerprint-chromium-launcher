@@ -1,0 +1,44 @@
+# 安装 Tauri 2 的 Linux 构建依赖：先把 apt 源换成非 Azure 镜像（azure.archive.ubuntu.com 在 runner 上曾长期仅 10–50 KB/s），
+# 再用 cache-apt-pkgs-action 缓存 .deb，命中缓存时不再下载。必须在 actions/checkout 之后使用。
+# 超时请在调用处的 step 上设置 timeout-minutes（composite action 的内部 step 不支持该字段）。
+name: 安装 Tauri Linux 依赖
+description: 切换 apt 镜像并安装（带缓存）Tauri 所需系统包
+inputs:
+  extra-packages:
+    description: 额外的 apt 包（空格分隔），如 E2E 所需的 webkit2gtk-driver xvfb fonts-noto-cjk
+    required: false
+    default: ""
+runs:
+  using: composite
+  steps:
+    - name: 切换 apt 镜像并设置网络保护
+      shell: bash
+      run: |
+        # 多镜像回退列表：apt 的 mirror 传输方法在某个镜像失败 / 超时后自动换下一个
+        sudo tee /etc/apt/ci-mirrors.txt >/dev/null <<'LIST'
+        http://archive.ubuntu.com/ubuntu/
+        https://mirrors.edge.kernel.org/ubuntu/
+        https://mirror.us.leaseweb.net/ubuntu/
+        LIST
+        # 兼容 deb822（ubuntu.sources）与传统 sources.list；security.ubuntu.com 等其它源保持不变
+        for f in /etc/apt/sources.list /etc/apt/sources.list.d/*.sources /etc/apt/sources.list.d/*.list; do
+          [ -f "$f" ] || continue
+          sudo sed -i -E 's#https?://azure\.archive\.ubuntu\.com/ubuntu/?#mirror+file:/etc/apt/ci-mirrors.txt#g' "$f"
+        done
+        # 重试 + 连接停滞超时 + dpkg 锁等待；同时作用于后续 cache-apt-pkgs-action 内部的 apt 调用
+        sudo tee /etc/apt/apt.conf.d/99-ci-network >/dev/null <<'CONF'
+        Acquire::Retries "3";
+        Acquire::http::Timeout "20";
+        Acquire::https::Timeout "20";
+        DPkg::Lock::Timeout "120";
+        CONF
+        sudo apt-get update
+
+    - name: 安装依赖（缓存 .deb）
+      uses: awalsh128/cache-apt-pkgs-action@v1.6.3
+      with:
+        packages: >-
+          libwebkit2gtk-4.1-dev build-essential file libxdo-dev libssl-dev libayatana-appindicator3-dev librsvg2-dev
+          ${{ inputs.extra-packages }}
+        version: "1"
+        execute_install_scripts: true

@@ -6,7 +6,7 @@
 
 ## Overview
 
-This directory contains guidelines for frontend development. Fill in each file with your project's specific conventions.
+前端（Tauri 2 WebView 内的 React 19 + TypeScript + shadcn/ui + Tailwind v4）开发约定。后端约定见 `../backend/`，跨 CI 的流程约定见 `../guides/ci-dev-workflow.md`。
 
 ---
 
@@ -14,26 +14,16 @@ This directory contains guidelines for frontend development. Fill in each file w
 
 | Guide | Description | Status |
 |-------|-------------|--------|
-| [Directory Structure](./directory-structure.md) | Module organization and file layout | To fill |
-| [Component Guidelines](./component-guidelines.md) | Component patterns, props, composition | To fill |
-| [Hook Guidelines](./hook-guidelines.md) | Custom hooks, data fetching patterns | To fill |
-| [State Management](./state-management.md) | Local state, global state, server state | To fill |
-| [Quality Guidelines](./quality-guidelines.md) | Code standards, forbidden patterns | To fill |
-| [Type Safety](./type-safety.md) | Type patterns, validation | To fill |
+| [Directory Structure](./directory-structure.md) | src 目录布局与组件 / 逻辑归属 | Filled |
+| [Component Guidelines](./component-guidelines.md) | shadcn 组合、data-testid 约定、TanStack 列定义稳定性 | Filled |
+| [Hook Guidelines](./hook-guidelines.md) | React Compiler lint 下的数据加载与轮询 | Filled |
+| [State Management](./state-management.md) | 页面级状态、派生状态、主题 | Filled |
+| [Quality Guidelines](./quality-guidelines.md) | 本地检查、截图自查与禁止事项 | Filled |
+| [Type Safety](./type-safety.md) | Rust/TS 契约对齐与 invoke 参数命名 | Filled |
 
 ---
 
-## How to Fill These Guidelines
+## Notes
 
-For each guideline file:
-
-1. Document your project's **actual conventions** (not ideals)
-2. Include **code examples** from your codebase
-3. List **forbidden patterns** and why
-4. Add **common mistakes** your team has made
-
-The goal is to help AI assistants and new team members understand how YOUR project works.
-
----
-
-**Language**: All documentation should be written in **English**.
+- 文档以实际代码为准（不写理想状态）；修改代码约定时同步更新对应文件。
+- 本目录文档使用中文，代码标识符保持英文。

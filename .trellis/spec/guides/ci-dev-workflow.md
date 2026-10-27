@@ -34,7 +34,7 @@ pnpm lint && pnpm test && pnpm build
 
 1. 本地能完成的检查（前端 lint / vitest / build）**不上 CI**，推送前必须本地通过。
 2. 本地按小步 commit，**攒批到验证检查点再 push**；不要每个小改动都推送。
-3. `ci.yml` 的 push 触发带 `paths` 过滤：`.trellis/**`、`*.md` 等文档改动不会触发；只推文档时无需顾虑。
+3. `ci.yml` 的 push 触发带 `paths` 过滤（`src-tauri/**`、`configs/**`、`e2e/**`、`src/**`、`package.json`、`pnpm-lock.yaml`、workflow 与 `.github/actions/**`）：`.trellis/**`、`*.md` 等文档改动不会触发；注意纯前端（`src/**`）改动也会触发常驻的 `rust-linux`，同样要攒批。
 4. 重型 job 按需启用：提交信息含 `[e2e]` 才跑 Linux E2E，含 `[macos]` 才跑 macOS Rust 测试与 macOS 打包。
 5. 推送前自审 Rust 代码（类型、借用、clippy 常见告警、`cargo fmt` 风格），尽量一次通过。
 6. 全任务运行目标 ≤ 20 次；接近上限时先复盘失败原因，再决定是否继续推送。收尾报告如实列出运行次数。
@@ -45,6 +45,7 @@ pnpm lint && pnpm test && pnpm build
 
 ```bash
 git add -A && git commit -m "wip: <改动摘要>"          # 本地可多次提交
+git pull --rebase --autostash origin feat/tauri-launcher  # CI 机器人可能已回推格式化 / Cargo.lock 提交
 git push origin feat/tauri-launcher                     # 到检查点再推送；需要 E2E 时最后一个提交信息带 [e2e]
 
 # 等待本次 CI 结果（非零退出码表示失败）
@@ -64,24 +65,30 @@ gh run view "$RUN_ID" --log-failed | tail -200
 
 | Workflow | 触发 | Job | 条件 | 作用 |
 |---|---|---|---|---|
-| `ci.yml` | push `feat/**`（paths 过滤）、手动 | `rust-linux` | 总是 | fmt --check → clippy `-D warnings` → test → 上传 `Cargo.lock` artifact |
+| `ci.yml` | push `feat/**`、`main`（paths 过滤）、手动 | `rust-linux` | 总是 | 开发分支 `cargo fmt` 自动格式化（main 为 `--check`）→ clippy `--all-targets -D warnings` → test → 回推格式化与 `Cargo.lock` |
 | | | `rust-macos` | `[macos]` / input | clippy → test（macOS 进程与 Info.plist 行为） |
 | | | `e2e-linux` | `[e2e]` / input | Xvfb + tauri-driver + WebKitWebDriver 驱动真实应用与 Linux 版 fingerprint-chromium，上传截图 |
-| `build-macos.yml` | push 且提交信息含 `[macos]`、手动 | `build` | — | Apple Silicon `.app`（zip）与 `.dmg` artifact |
+| `build-macos.yml` | 由 `ci.yml` 的 `build-macos` job 调用（`[macos]`）；文件合入 `main` 后也可手动 `gh workflow run` | `build` | `[macos]` / input | Apple Silicon `.app`（zip，artifact `macos-app`）与 `.dmg`（`macos-dmg`） |
 
 前端检查不在 CI 中，由本地负责。
 
+### Linux apt 依赖安装
+
+`rust-linux` 与 `e2e-linux` 共用本地 composite action `.github/actions/setup-tauri-linux`（包列表单一来源，E2E 通过 `extra-packages` 追加）：
+
+- 先把 runner 默认的 `azure.archive.ubuntu.com` 换成多镜像回退列表（`mirror+file:/etc/apt/ci-mirrors.txt`），并设置 `Acquire::Retries` / `Acquire::http::Timeout` / `DPkg::Lock::Timeout`；该镜像在 runner 上曾长期仅 10–50 KB/s，导致安装卡死。
+- 再用 `awalsh128/cache-apt-pkgs-action` 缓存 .deb，命中后不再下载。调整包列表后如需强制重建缓存，递增 action 内的 `version`。
+- 超时在调用处的 step 上设置（`timeout-minutes: 15`），composite 内部 step 不支持该字段。
+
 ---
 
-## Cargo.lock
+## rustfmt 与 Cargo.lock（CI 机器人回推）
 
-本机无法生成 `Cargo.lock`。当仓库缺少它，或改动了 `Cargo.toml` 依赖时：
+本机无法运行 `rustfmt` 与生成 `Cargo.lock`，由 `rust-linux` job 在开发分支上处理：
 
-```bash
-gh run download "$RUN_ID" -n cargo-lock -D /tmp/cargo-lock
-cp /tmp/cargo-lock/Cargo.lock src-tauri/Cargo.lock
-git add src-tauri/Cargo.lock && git commit -m "wip: 更新 Cargo.lock" && git push
-```
+- 先执行 `cargo fmt`，测试结束后（无论成败）把 `src-tauri/` 下的格式化结果与 `Cargo.lock` 变更以 `💄 style: CI 自动格式化与更新 Cargo.lock` 提交回推。
+- 使用 `GITHUB_TOKEN` 推送，**不会**再次触发 workflow，不额外消耗运行次数。
+- 因此每次推送前必须 `git pull --rebase --autostash`；`main` 上只做 `cargo fmt --check`，不回推。
 
 ---
 
@@ -100,7 +107,19 @@ git add src-tauri/Cargo.lock && git commit -m "wip: 更新 Cargo.lock" && git pu
 - 测试数据隔离：HOME / XDG 目录指向临时目录；浏览器数据目录前缀使用临时目录。
 - WebDriver 无法操作系统原生文件对话框：导入等依赖对话框的流程在 E2E 中直接 `invoke` 对应 command。
 - 夹具一律为合成数据（虚构名称、示例代理地址），禁止使用真实环境数据。
-- 失败排查先下载截图 artifact：`gh run download "$RUN_ID" -n e2e-screenshots -D /tmp/e2e`。
+- 失败排查先下载截图 artifact：`gh run download "$RUN_ID" -n e2e-screenshots -D /tmp/e2e`（失败用例自动截图 `FAILED-*.png`）。
+- `e2e/` 是独立 pnpm 项目（自有 `pnpm-lock.yaml`）；pnpm 11 需在 `e2e/pnpm-workspace.yaml` 用 `allowBuilds` 显式声明依赖构建脚本（esbuild 允许，Edge / Gecko 驱动下载禁止），否则安装直接失败。
+- WebKitWebDriver 不支持 BiDi：capabilities 需 `wdio:enforceWebDriverClassic: true`；WebDriver 的 clear 不一定触发 React onChange，清空输入框用键盘全选删除。
+- 测试环境用 `XDG_DATA_HOME` / `XDG_CONFIG_HOME` 指向临时目录隔离应用数据；`--no-sandbox`、`--password-store=basic` 等只写在测试环境的 extra_args，不进默认配置。
+- 渲染环境：xvfb 下设置 `WEBKIT_DISABLE_COMPOSITING_MODE=1`、`WEBKIT_DISABLE_DMABUF_RENDERER=1`，否则 WebKitGTK 白屏。
+
+### WebdriverIO 10 + WebKitWebDriver 实测踩坑
+
+- **`executeAsync` 已移除**：调用 Tauri command 用 `browser.execute(async (cmd, args) => …, cmd, args)`，传入 async 函数时内部走 `executeAsyncScript` 并等待 Promise；在页面内 try/catch，返回 `{ ok }` / `{ err }`，避免异常被吞成会话错误。
+- **`$$()` 结果不是普通数组**：不能 `Promise.all(rows.map(...))`。批量读取元素信息一律在页面内 `document.querySelectorAll` 后返回纯数据（如列表行 ID 数组）。
+- **`getText` / `toHaveText` 对弹层内元素可能读空**（元素被判为不可见，如 Dialog 动画中）：文本断言统一读 `textContent`（`browser.execute`），`waitUntil` 的 `timeoutMsg` 附带最后读到的实际值，失败时才能看出差异。
+- **残留弹层会连锁失败**：每个用例前（`beforeEach`）与失败后（`afterTest`）检测并按 Escape 关闭 Dialog / Popover，再继续后续用例。
+- **首跑前先做静态预检**：E2E 一次运行成本高（Rust 构建 + 浏览器冷启动）且占用节制的运行额度，提交前执行 `node --check e2e/**/*.mjs`，并对照 `src/` 核对 `data-testid` 是否存在、command 参数名是否为 camelCase。
 
 ---
 
