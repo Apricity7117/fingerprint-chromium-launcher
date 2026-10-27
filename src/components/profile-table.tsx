@@ -28,6 +28,19 @@ import type { Profile, RunningStatusMap } from "@/lib/types";
 const STICKY_ACTIONS =
   "sticky right-0 bg-background shadow-[-8px_0_8px_-8px_rgb(0_0_0/0.15)] in-data-[state=selected]:bg-muted";
 
+/** 列宽（px）：默认窗口（1280 宽含侧栏）下含分组列的总宽 ≤ 内容区，次要列靠截断适配 */
+const COLUMN_SIZES = {
+  select: 40,
+  name: 160,
+  group: 90,
+  status: 130,
+  platform: 95,
+  fingerprint: 85,
+  hardware: 120,
+  proxy: 120,
+  actions: 112,
+} as const;
+
 /** 表格行：附带运行标记以支持按状态排序 */
 type ProfileRow = Profile & { running: boolean };
 
@@ -58,11 +71,15 @@ function SortHeader({ ctx, label }: { ctx: HeaderContext<ProfileRow, unknown>; l
   );
 }
 
+const hardwareText = (profile: Profile) =>
+  `${profile.gpu_renderer || "自动"} · ${profile.hardware_concurrency || "自动"} 核`;
+
 const sortable = (label: string) => (ctx: HeaderContext<ProfileRow, unknown>) => <SortHeader ctx={ctx} label={label} />;
 
 const COLUMNS: ColumnDef<ProfileRow>[] = [
   {
     id: "select",
+    size: COLUMN_SIZES.select,
     header: ({ table }) => (
       <Checkbox
         aria-label="全选"
@@ -83,10 +100,11 @@ const COLUMNS: ColumnDef<ProfileRow>[] = [
   },
   {
     id: "name",
+    size: COLUMN_SIZES.name,
     accessorKey: "name",
     header: sortable("名称"),
     cell: ({ row }) => (
-      <div className="max-w-48 min-w-0">
+      <div className="min-w-0">
         <div className="truncate font-medium" title={row.original.name}>
           {row.original.name}
         </div>
@@ -96,12 +114,14 @@ const COLUMNS: ColumnDef<ProfileRow>[] = [
   },
   {
     id: "group",
+    size: COLUMN_SIZES.group,
     accessorFn: (profile) => groupOf(profile),
     header: sortable("分组"),
     cell: ({ getValue }) => <Badge variant="secondary">{getValue<string>()}</Badge>,
   },
   {
     id: "status",
+    size: COLUMN_SIZES.status,
     accessorFn: (row) => (row.running ? 1 : 0),
     header: sortable("状态"),
     cell: (ctx: CellContext<ProfileRow, unknown>) => (
@@ -110,6 +130,7 @@ const COLUMNS: ColumnDef<ProfileRow>[] = [
   },
   {
     id: "platform",
+    size: COLUMN_SIZES.platform,
     accessorKey: "platform",
     header: sortable("平台"),
     cell: ({ row }) => (
@@ -121,15 +142,17 @@ const COLUMNS: ColumnDef<ProfileRow>[] = [
   },
   {
     id: "fingerprint",
+    size: COLUMN_SIZES.fingerprint,
     accessorKey: "fingerprint",
     header: sortable("种子"),
     cell: ({ row }) => <span className="font-mono">{row.original.fingerprint}</span>,
   },
   {
     id: "hardware",
+    size: COLUMN_SIZES.hardware,
     header: "硬件",
     cell: ({ row }) => (
-      <span className="block max-w-40 truncate" title={row.original.gpu_renderer}>
+      <span className="block truncate" title={hardwareText(row.original)}>
         {row.original.gpu_renderer || "自动"}
         <span className="text-muted-foreground"> · {row.original.hardware_concurrency || "自动"} 核</span>
       </span>
@@ -138,11 +161,12 @@ const COLUMNS: ColumnDef<ProfileRow>[] = [
   },
   {
     id: "proxy",
+    size: COLUMN_SIZES.proxy,
     header: "代理",
     cell: ({ row }) =>
       row.original.proxy_server ? (
         <span
-          className="block max-w-40 truncate font-mono text-xs text-amber-600 dark:text-amber-400"
+          className="block truncate font-mono text-xs text-amber-600 dark:text-amber-400"
           title={row.original.proxy_server}
         >
           {row.original.proxy_server}
@@ -154,6 +178,7 @@ const COLUMNS: ColumnDef<ProfileRow>[] = [
   },
   {
     id: "actions",
+    size: COLUMN_SIZES.actions,
     header: () => <span className="sr-only">操作</span>,
     cell: (ctx: CellContext<ProfileRow, unknown>) => {
       const { status, pending, handlers } = metaOf(ctx);
@@ -259,12 +284,16 @@ export function ProfileTable({
         </div>
       )}
       <div className="rounded-lg border">
-        <Table data-testid="profile-table">
+        <Table className="table-fixed" data-testid="profile-table">
           <TableHeader>
             {table.getHeaderGroups().map((headerGroup) => (
               <TableRow key={headerGroup.id}>
                 {headerGroup.headers.map((header) => (
-                  <TableHead key={header.id} className={header.column.id === "actions" ? STICKY_ACTIONS : undefined}>
+                  <TableHead
+                    key={header.id}
+                    style={{ width: header.getSize() }}
+                    className={header.column.id === "actions" ? STICKY_ACTIONS : undefined}
+                  >
                     {header.isPlaceholder ? null : flexRender(header.column.columnDef.header, header.getContext())}
                   </TableHead>
                 ))}
