@@ -1,5 +1,5 @@
 // 启动器端到端流程：真实应用 + 真实 Linux 版 fingerprint-chromium，数据目录均为临时目录。
-import { $, $$, browser, expect } from "@wdio/globals";
+import { $, browser, expect } from "@wdio/globals";
 import crypto from "node:crypto";
 import fs from "node:fs";
 import path from "node:path";
@@ -136,9 +136,13 @@ async function waitForApp() {
   await browser.waitUntil(async () => !(await (await byId("profiles-loading")).isExisting()), { timeout: 15000 });
 }
 
+/** 按 DOM 顺序读取列表行的环境 ID（WebdriverIO 10 的 $$ 结果不是普通数组，改在页面内读取） */
 async function rowIds() {
-  const rows = await $$('[data-testid^="profile-row-"]');
-  return Promise.all(rows.map(async (row) => (await row.getAttribute("data-testid")).replace("profile-row-", "")));
+  return browser.execute(() =>
+    Array.from(document.querySelectorAll('[data-testid^="profile-row-"]'), (row) =>
+      row.getAttribute("data-testid").replace("profile-row-", ""),
+    ),
+  );
 }
 
 /** 进程是否存活：僵尸进程（已退出待回收）视为已退出 */
