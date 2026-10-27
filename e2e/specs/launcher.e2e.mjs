@@ -355,4 +355,71 @@ describe("指纹浏览器启动器", () => {
     expect(await browser.execute(() => document.documentElement.classList.contains("dark"))).toBe(true);
     await screenshot("07-dark-cards");
   });
+
+  it("编辑已有环境的名称与代理，刷新后界面与后端都保持新值", async () => {
+    await click(`edit-${alpha.id}`);
+    await (await byId("profile-form")).waitForDisplayed();
+    await clearInput("form-name");
+    await (await byId("form-name")).addValue("e2e-alpha-edited");
+    await clearInput("form-proxy");
+    await (await byId("form-proxy")).addValue("socks5://127.0.0.1:19999");
+    await click("form-save");
+    await (await byId("profile-form")).waitForDisplayed({ reverse: true });
+    await waitForToast("环境已更新");
+
+    await browser.refresh();
+    await waitForApp();
+    await waitForTextIncludes(`profile-card-${alpha.id}`, "e2e-alpha-edited");
+    await waitForTextIncludes(`profile-card-${alpha.id}`, "socks5://127.0.0.1:19999");
+
+    const saved = (await invoke("list_profiles")).ok.find((item) => item.id === alpha.id);
+    expect(saved.name).toBe("e2e-alpha-edited");
+    expect(saved.proxy_server).toBe("socks5://127.0.0.1:19999");
+    // 未编辑的字段保持不变
+    expect(saved.fingerprint).toBe(alpha.fingerprint);
+    expect(saved.group).toBe("alpha");
+  });
+
+  it("列表视图多选批量删除并同时删除数据目录，其他环境不受影响", async () => {
+    const doomed = [];
+    for (const [index, name] of ["e2e-del-1", "e2e-del-2"].entries()) {
+      const created = await invoke("create_profile", {
+        profile: { ...alpha, id: "", name, group: "doomed", fingerprint: 3001 + index },
+      });
+      expect(created.err).toBeUndefined();
+      fs.mkdirSync(path.join(dataDir(created.ok.id), "Default"), { recursive: true });
+      doomed.push(created.ok.id);
+    }
+    expect(fs.existsSync(dataDir(beta.id))).toBe(true);
+
+    await browser.refresh();
+    await waitForApp();
+    await click("view-list");
+    await browser.waitUntil(async () => {
+      const ids = await rowIds();
+      return doomed.every((id) => ids.includes(id));
+    });
+
+    for (const id of doomed) await click(`select-${id}`);
+    await click("batch-delete");
+    await click("delete-data-checkbox");
+    await click("confirm-delete");
+    await waitForToast("环境与本地数据已删除");
+
+    await browser.waitUntil(async () => {
+      const ids = await rowIds();
+      return doomed.every((id) => !ids.includes(id));
+    });
+    const remaining = (await invoke("list_profiles")).ok.map((item) => item.id);
+    for (const id of doomed) {
+      expect(remaining).not.toContain(id);
+      expect(fs.existsSync(dataDir(id))).toBe(false);
+    }
+    expect(remaining).toContain(alpha.id);
+    expect(remaining).toContain(beta.id);
+    expect(fs.existsSync(dataDir(beta.id))).toBe(true);
+    const ids = await rowIds();
+    expect(ids).toContain(alpha.id);
+    expect(ids).toContain(beta.id);
+  });
 });
