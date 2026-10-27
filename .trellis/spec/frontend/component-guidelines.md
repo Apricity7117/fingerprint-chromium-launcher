@@ -17,5 +17,6 @@
 ## 原生能力入口
 
 - 文件 / 目录选择：`@tauri-apps/plugin-dialog` 的 `open`（仅 `settings-dialog.tsx` 使用）；剪贴板经 `lib/clipboard.ts`（Tauri 插件，浏览器预览回退 Web API）。
-- 新增原生插件调用时，需在 `src-tauri/capabilities/default.json` 声明最小权限（当前仅 `dialog:allow-open`、`clipboard-manager:allow-write-text`），否则前端调用被沙箱拒绝。
+- 新增原生插件调用时，需在 `src-tauri/capabilities/default.json` 声明最小权限（当前为 `core:window:allow-start-dragging`、`core:window:allow-set-theme`、`dialog:allow-open`、`clipboard-manager:allow-write-text`），否则前端调用被沙箱拒绝。
+- 标题栏为 macOS `Overlay` 样式：顶部 28px 由 `TitleBarDragRegion` 占位（侧栏与内容区各一个，带 `data-tauri-drag-region`），新增顶层布局时保留它；原生窗口外观由 `ThemeProvider` 经 `setTheme` 同步，「跟随系统」必须传 `null`。
 - 批量操作（启动 / 停止）用 `Promise.allSettled` 并经 `summarize` 汇总为一条 toast，失败信息取首个错误。

@@ -1,6 +1,7 @@
 import { FingerprintIcon, FolderIcon, LayersIcon, SettingsIcon } from "lucide-react";
 
 import { ThemeToggle } from "@/components/theme-toggle";
+import { TitleBarDragRegion } from "@/components/title-bar-drag-region";
 import { Button } from "@/components/ui/button";
 import {
   Sidebar,
@@ -30,6 +31,7 @@ interface AppSidebarProps {
 export function AppSidebar({ groups, total, active, runningCount, onSelect, onOpenSettings }: AppSidebarProps) {
   return (
     <Sidebar>
+      <TitleBarDragRegion />
       <SidebarHeader>
         <div className="flex items-center gap-2 px-2 py-1.5">
           <div className="flex size-8 items-center justify-center rounded-lg bg-primary text-primary-foreground">

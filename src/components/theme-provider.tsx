@@ -1,4 +1,8 @@
+import { isTauri } from "@tauri-apps/api/core";
+import { getCurrentWindow } from "@tauri-apps/api/window";
 import { createContext, type ReactNode, useCallback, useContext, useEffect, useState, useSyncExternalStore } from "react";
+
+import { errorMessage } from "@/lib/api";
 
 export type Theme = "light" | "dark" | "system";
 type ResolvedTheme = "light" | "dark";
@@ -39,6 +43,15 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
     document.documentElement.classList.toggle("dark", resolvedTheme === "dark");
     document.documentElement.style.colorScheme = resolvedTheme;
   }, [resolvedTheme]);
+
+  // 原生窗口外观（标题文字、红绿灯、系统对话框）跟随所选主题；「跟随系统」传 null 交还系统，
+  // 否则 WebView 的 prefers-color-scheme 会停留在上次手动设置的外观上
+  useEffect(() => {
+    if (!isTauri()) return;
+    getCurrentWindow()
+      .setTheme(theme === "system" ? null : theme)
+      .catch((error: unknown) => console.error("同步窗口主题失败", errorMessage(error)));
+  }, [theme]);
 
   const setTheme = useCallback((next: string) => {
     const value: Theme = next === "light" || next === "dark" ? next : "system";
