@@ -72,6 +72,14 @@ gh run view "$RUN_ID" --log-failed | tail -200
 
 前端检查不在 CI 中，由本地负责。
 
+### Linux apt 依赖安装
+
+`rust-linux` 与 `e2e-linux` 共用本地 composite action `.github/actions/setup-tauri-linux`（包列表单一来源，E2E 通过 `extra-packages` 追加）：
+
+- 先把 runner 默认的 `azure.archive.ubuntu.com` 换成多镜像回退列表（`mirror+file:/etc/apt/ci-mirrors.txt`），并设置 `Acquire::Retries` / `Acquire::http::Timeout` / `DPkg::Lock::Timeout`；该镜像在 runner 上曾长期仅 10–50 KB/s，导致安装卡死。
+- 再用 `awalsh128/cache-apt-pkgs-action` 缓存 .deb，命中后不再下载。调整包列表后如需强制重建缓存，递增 action 内的 `version`。
+- 超时在调用处的 step 上设置（`timeout-minutes: 15`），composite 内部 step 不支持该字段。
+
 ---
 
 ## rustfmt 与 Cargo.lock（CI 机器人回推）
