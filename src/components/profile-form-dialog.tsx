@@ -156,10 +156,15 @@ function ProfileForm({
     if (!SEED_PATTERN.test(text)) return;
     const seed = Number(text);
     update({ fingerprint: seed });
-    seedTimer.current = window.setTimeout(() => void applyRecommendation(draft.platform, seed), 500);
+    seedTimer.current = window.setTimeout(
+      () => void applyRecommendation(draft.platform, seed),
+      defaults.seed_recommend_debounce_ms,
+    );
   };
 
   const onPlatformChange = (platform: string) => {
+    // 取消待执行的种子推荐，避免用旧平台覆盖
+    window.clearTimeout(seedTimer.current);
     update({ platform });
     const seed = SEED_PATTERN.test(seedText) ? Number(seedText) : null;
     void applyRecommendation(platform, seed);

@@ -24,11 +24,9 @@ import { useProfiles } from "@/hooks/use-profiles";
 import { useRunningStatus } from "@/hooks/use-running-status";
 import { useSettings } from "@/hooks/use-settings";
 import { api, errorMessage } from "@/lib/api";
+import { defaults } from "@/lib/presets";
 import { ALL_GROUPS, filterProfiles, groupOf, summarizeGroups, UNGROUPED } from "@/lib/profile-utils";
 import type { Profile, ViewMode } from "@/lib/types";
-
-/** 启动后延迟刷新一次状态：等待 Chromium 写入 SingletonLock */
-const STATUS_REFRESH_DELAY_MS = 1000;
 
 function summarize(action: string, results: PromiseSettledResult<unknown>[]) {
   const failed = results.filter((result): result is PromiseRejectedResult => result.status === "rejected");
@@ -78,7 +76,7 @@ function LauncherPage() {
       } finally {
         setPending((prev) => new Set([...prev].filter((id) => !ids.includes(id))));
         void refreshStatus();
-        window.setTimeout(() => void refreshStatus(), STATUS_REFRESH_DELAY_MS);
+        window.setTimeout(() => void refreshStatus(), defaults.status_refresh_delay_ms);
       }
     },
     [refreshStatus],

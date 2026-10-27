@@ -18,6 +18,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Separator } from "@/components/ui/separator";
 import { api, errorMessage } from "@/lib/api";
+import { defaults } from "@/lib/presets";
 import type { ChromiumInfo, Settings } from "@/lib/types";
 
 interface SettingsDialogProps {
@@ -78,7 +79,7 @@ function SettingsForm({
           if (!cancelled) setInfo(result);
         })
         .catch(() => undefined);
-    }, 400);
+    }, defaults.version_detect_debounce_ms);
     return () => {
       cancelled = true;
       window.clearTimeout(timer);
