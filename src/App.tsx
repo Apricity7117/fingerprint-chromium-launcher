@@ -11,6 +11,7 @@ import { ProfileGrid } from "@/components/profile-grid";
 import { ProfileTable } from "@/components/profile-table";
 import { SettingsDialog } from "@/components/settings-dialog";
 import { ThemeProvider } from "@/components/theme-provider";
+import { TitleBarDragRegion } from "@/components/title-bar-drag-region";
 import { Button } from "@/components/ui/button";
 import { InputGroup, InputGroupAddon, InputGroupInput } from "@/components/ui/input-group";
 import { Separator } from "@/components/ui/separator";
@@ -217,9 +218,10 @@ function LauncherPage() {
         onOpenSettings={() => setSettingsOpen(true)}
       />
       <SidebarInset className="h-svh overflow-hidden">
+        <TitleBarDragRegion />
         <header className="flex h-14 shrink-0 items-center gap-3 border-b px-4">
           <SidebarTrigger className="-ml-1" />
-          <Separator orientation="vertical" className="data-[orientation=vertical]:h-4" />
+          <Separator orientation="vertical" className="data-vertical:h-4 data-vertical:self-auto" />
           <div className="flex min-w-0 items-baseline gap-2">
             <h1 className="truncate font-semibold" data-testid="page-title">
               {title}
