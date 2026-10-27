@@ -2,6 +2,7 @@
 // 由 CI 在 xvfb 下运行，应用需预先以 `pnpm tauri build --debug --no-bundle` 构建。
 import { spawn } from "node:child_process";
 import fs from "node:fs";
+import net from "node:net";
 import os from "node:os";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
@@ -11,6 +12,8 @@ const application = path.resolve(here, "../src-tauri/target/debug/fingerprint-ch
 const tauriDriverPath = process.env.TAURI_DRIVER ?? path.join(os.homedir(), ".cargo", "bin", "tauri-driver");
 export const screenshotDir = path.resolve(here, "screenshots");
 
+const DRIVER_PORT = 4444;
+
 let tauriDriver;
 let exiting = false;
 
@@ -19,10 +22,28 @@ function closeTauriDriver() {
   tauriDriver?.kill();
 }
 
+/** 等待 tauri-driver 开始监听，避免 WebdriverIO 在其就绪前建立会话 */
+async function waitForPort(port, timeoutMs = 20000) {
+  const deadline = Date.now() + timeoutMs;
+  while (Date.now() < deadline) {
+    const ready = await new Promise((resolve) => {
+      const socket = net.connect(port, "127.0.0.1");
+      socket.once("connect", () => {
+        socket.destroy();
+        resolve(true);
+      });
+      socket.once("error", () => resolve(false));
+    });
+    if (ready) return;
+    await new Promise((resolve) => setTimeout(resolve, 200));
+  }
+  throw new Error(`tauri-driver 未在 ${timeoutMs}ms 内监听端口 ${port}`);
+}
+
 export const config = {
   runner: "local",
   hostname: "127.0.0.1",
-  port: 4444,
+  port: DRIVER_PORT,
   specs: ["./specs/**/*.e2e.mjs"],
   maxInstances: 1,
   capabilities: [
@@ -48,7 +69,7 @@ export const config = {
   },
 
   // 每个会话前启动 tauri-driver，用于代理 WebDriver 请求
-  beforeSession() {
+  async beforeSession() {
     tauriDriver = spawn(tauriDriverPath, [], { stdio: [null, process.stdout, process.stderr] });
     tauriDriver.on("error", (error) => {
       console.error("tauri-driver 启动失败:", error);
@@ -60,6 +81,7 @@ export const config = {
         process.exit(1);
       }
     });
+    await waitForPort(DRIVER_PORT);
   },
 
   afterSession() {

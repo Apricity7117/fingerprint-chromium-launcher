@@ -12,7 +12,9 @@ const fixtureProfiles = path.resolve(here, "../fixtures/legacy/profiles.json");
 const CHROMIUM = requiredEnv("E2E_CHROMIUM");
 const BROWSER_DATA = requiredEnv("E2E_BROWSER_DATA");
 // 测试专用参数：CI 环境无密钥环与 GPU，沙箱由 CI 解除 userns 限制后仍保守关闭
-const EXTRA_ARGS = "--password-store=basic --no-first-run --no-sandbox --disable-dev-shm-usage";
+const EXTRA_ARGS = "--password-store=basic --no-first-run --no-sandbox --disable-dev-shm-usage --disable-gpu";
+// Chromium 在 CI 的 xvfb 中冷启动较慢，等待状态切换时留足余量
+const STATE_TIMEOUT = 45000;
 
 function requiredEnv(name) {
   const value = process.env[name];
@@ -38,15 +40,17 @@ async function screenshot(name) {
   await browser.saveScreenshot(path.join(screenshotDir, `${name}.png`));
 }
 
-/** 直接调用 Tauri command（用于原生文件对话框等 WebDriver 无法操作的流程） */
+/**
+ * 直接调用 Tauri command（用于原生文件对话框等 WebDriver 无法操作的流程）。
+ * 使用 executeAsync 回调返回结果，不依赖 WebKitWebDriver 对 Promise 返回值的支持。
+ */
 async function invoke(cmd, args = {}) {
-  return browser.execute(
-    async (command, payload) => {
-      try {
-        return { ok: await window.__TAURI_INTERNALS__.invoke(command, payload) };
-      } catch (error) {
-        return { err: String(error) };
-      }
+  return browser.executeAsync(
+    (command, payload, done) => {
+      window.__TAURI_INTERNALS__.invoke(command, payload).then(
+        (ok) => done({ ok }),
+        (error) => done({ err: String(error) }),
+      );
     },
     cmd,
     args,
@@ -65,7 +69,7 @@ async function runningState(id) {
   return element.getAttribute("data-state");
 }
 
-async function waitForState(id, state, timeout = 20000) {
+async function waitForState(id, state, timeout = STATE_TIMEOUT) {
   await browser.waitUntil(async () => (await runningState(id)) === state, {
     timeout,
     interval: 500,
@@ -147,7 +151,7 @@ describe("指纹浏览器启动器", () => {
     await (await byId("form-name")).setValue("e2e-alpha");
     await click("form-group");
     await (await byId("form-group-input")).setValue("alpha");
-    await browser.keys("Enter");
+    await click("form-group-create");
     await (await byId("form-extra-args")).setValue(EXTRA_ARGS);
     await browser.waitUntil(async () => (await text("command-preview")).includes("--password-store=basic"), {
       timeoutMsg: "命令预览未包含额外参数",
@@ -210,7 +214,7 @@ describe("指纹浏览器启动器", () => {
   it("停止后状态变为已停止，浏览器进程退出", async () => {
     await click(`stop-${alpha.id}`);
     await waitForState(alpha.id, "stopped");
-    await browser.waitUntil(async () => !isProcessAlive(launchedPid), { timeout: 10000 });
+    await browser.waitUntil(async () => !isProcessAlive(launchedPid), { timeout: 15000 });
   });
 
   it("切换列表视图并持久化，按列排序与搜索", async () => {
