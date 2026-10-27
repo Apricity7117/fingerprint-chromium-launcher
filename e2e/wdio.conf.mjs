@@ -94,6 +94,11 @@ export const config = {
       const { browser } = await import("@wdio/globals");
       const name = `FAILED-${test.title}`.replace(/[^\w一-龥-]+/g, "_");
       await browser.saveScreenshot(path.join(screenshotDir, `${name}.png`)).catch(() => undefined);
+      // 截图后关闭残留的 Dialog / Popover，避免连锁失败
+      for (let i = 0; i < 3; i += 1) {
+        await browser.keys("Escape").catch(() => undefined);
+        await browser.pause(200).catch(() => undefined);
+      }
     }
   },
 };

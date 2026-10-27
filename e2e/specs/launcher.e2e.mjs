@@ -32,8 +32,50 @@ async function click(id) {
   await element.click();
 }
 
+/**
+ * 读取元素 textContent。
+ * WebDriver 的 Get Element Text 对被可见性判定为不可见的元素（如 Dialog 动画中）返回空串，故不使用 getText。
+ */
 async function text(id) {
-  return (await byId(id)).getText();
+  const value = await browser.execute((selector) => document.querySelector(selector)?.textContent ?? null, `[data-testid="${id}"]`);
+  return value === null ? null : value.trim();
+}
+
+/** 等待元素文本等于期望值，超时信息带上最后读到的实际值 */
+async function expectText(id, expected, timeout = 10000) {
+  let last = null;
+  await browser.waitUntil(
+    async () => {
+      last = await text(id);
+      return last === expected;
+    },
+    { timeout, interval: 300, timeoutMsg: `${id} 文本应为 ${JSON.stringify(expected)}，实际为 ${JSON.stringify(last)}` },
+  );
+}
+
+/** 等待元素文本包含片段，返回最终文本 */
+async function waitForTextIncludes(id, fragment, timeout = 15000) {
+  let last = null;
+  await browser.waitUntil(
+    async () => {
+      last = await text(id);
+      return last !== null && last.includes(fragment);
+    },
+    { timeout, interval: 300, timeoutMsg: `${id} 文本应包含 ${JSON.stringify(fragment)}，实际为 ${JSON.stringify(last)}` },
+  );
+  return last;
+}
+
+/** 关闭残留的 Dialog / Popover，避免失败用例影响后续用例 */
+async function dismissOverlays() {
+  for (let i = 0; i < 4; i += 1) {
+    const open = await browser.execute(
+      () => document.querySelector('[role="dialog"], [role="alertdialog"], [role="listbox"], [data-radix-popper-content-wrapper]') !== null,
+    );
+    if (!open) return;
+    await browser.keys("Escape");
+    await browser.pause(300);
+  }
 }
 
 async function screenshot(name) {
@@ -42,15 +84,16 @@ async function screenshot(name) {
 
 /**
  * 直接调用 Tauri command（用于原生文件对话框等 WebDriver 无法操作的流程）。
- * 使用 executeAsync 回调返回结果，不依赖 WebKitWebDriver 对 Promise 返回值的支持。
+ * WebdriverIO 10 已移除 executeAsync；传入真正的 async 函数时，execute 内部走 executeAsyncScript 并等待 Promise。
  */
 async function invoke(cmd, args = {}) {
-  return browser.executeAsync(
-    (command, payload, done) => {
-      window.__TAURI_INTERNALS__.invoke(command, payload).then(
-        (ok) => done({ ok }),
-        (error) => done({ err: String(error) }),
-      );
+  return browser.execute(
+    async (command, payload) => {
+      try {
+        return { ok: await window.__TAURI_INTERNALS__.invoke(command, payload) };
+      } catch (error) {
+        return { err: String(error) };
+      }
     },
     cmd,
     args,
@@ -127,6 +170,11 @@ describe("指纹浏览器启动器", () => {
     await waitForApp();
   });
 
+  // 每个用例前关闭上一个用例残留的弹层，保持用例相对独立
+  beforeEach(async () => {
+    await dismissOverlays();
+  });
+
   it("首次启动显示空状态", async () => {
     await expect(byId("empty-state")).toBeDisplayed();
     await screenshot("01-empty");
@@ -136,10 +184,7 @@ describe("指纹浏览器启动器", () => {
     await click("open-settings");
     await (await byId("settings-chromium-path")).setValue(CHROMIUM);
     await (await byId("settings-data-dir")).setValue(BROWSER_DATA);
-    await browser.waitUntil(async () => (await text("chromium-version")).includes("142.0.7444.175"), {
-      timeout: 15000,
-      timeoutMsg: "未识别 Chromium 142 版本",
-    });
+    await waitForTextIncludes("chromium-version", "142.0.7444.175");
     await expect($('[data-testid="chromium-version"] [data-mode="legacy"]')).toBeExisting();
     await screenshot("02-settings");
     await click("settings-save");
@@ -153,10 +198,7 @@ describe("指纹浏览器启动器", () => {
     await (await byId("form-group-input")).setValue("alpha");
     await click("form-group-create");
     await (await byId("form-extra-args")).setValue(EXTRA_ARGS);
-    await browser.waitUntil(async () => (await text("command-preview")).includes("--password-store=basic"), {
-      timeoutMsg: "命令预览未包含额外参数",
-    });
-    const preview = await text("command-preview");
+    const preview = await waitForTextIncludes("command-preview", "--password-store=basic");
     expect(preview).toContain("--fingerprint-gpu-vendor=Apple");
     expect(preview).toContain("chrome_<保存后生成>");
     await screenshot("03-form");
@@ -168,7 +210,7 @@ describe("指纹浏览器启动器", () => {
     expect(alpha.group).toBe("alpha");
     expect(alpha.fingerprint).toBe(1018);
     await expect(byId(`profile-card-${alpha.id}`)).toBeDisplayed();
-    await expect(byId("group-count-alpha")).toHaveText("1");
+    await expectText("group-count-alpha", "1");
   });
 
   it("预览命令与实际启动命令一致，并写入默认偏好", async () => {
@@ -178,11 +220,10 @@ describe("指纹浏览器启动器", () => {
     beta = created.ok;
     await browser.refresh();
     await waitForApp();
-    await expect(byId("group-count-all")).toHaveText("2");
+    await expectText("group-count-all", "2");
 
     await click(`edit-${alpha.id}`);
-    await browser.waitUntil(async () => (await text("command-preview")).includes(`chrome_${alpha.id.slice(0, 8)}`));
-    const preview = await text("command-preview");
+    const preview = await waitForTextIncludes("command-preview", `chrome_${alpha.id.slice(0, 8)}`);
     await click("copy-command");
     await waitForToast("已复制启动命令");
     await browser.keys("Escape");
@@ -194,7 +235,7 @@ describe("指纹浏览器启动器", () => {
     launchedPid = launched.ok.pid;
 
     await waitForState(alpha.id, "running");
-    await expect(byId("running-count")).toHaveText("1");
+    await expectText("running-count", "1");
     const prefs = JSON.parse(fs.readFileSync(path.join(dataDir(alpha.id), "Default", "Preferences"), "utf8"));
     expect(prefs.bookmark_bar.show_tab_groups).toBe(false);
     expect(prefs.credentials_enable_service).toBe(true);
@@ -238,11 +279,12 @@ describe("指纹浏览器启动器", () => {
   });
 
   it("多选后批量启动与批量停止", async () => {
+    await click("view-list");
     await click("select-all");
     await click("batch-launch");
     await waitForState(alpha.id, "running");
     await waitForState(beta.id, "running");
-    await expect(byId("running-count")).toHaveText("2");
+    await expectText("running-count", "2");
     await screenshot("06-batch-running");
 
     await click("batch-stop");
@@ -275,9 +317,9 @@ describe("指纹浏览器启动器", () => {
     expect(first.ok).toEqual({ added: 3, skipped: 0, settings_imported: false });
     await browser.refresh();
     await waitForApp();
-    await expect(byId("group-count-all")).toHaveText("5");
-    await expect(byId("group-count-team-a")).toHaveText("2");
-    await expect(byId("group-count-未分组")).toHaveText("1");
+    await expectText("group-count-all", "5");
+    await expectText("group-count-team-a", "2");
+    await expectText("group-count-未分组", "1");
 
     const imported = (await invoke("list_profiles")).ok.find((item) => item.id === "eeee5555ffff6666");
     expect(imported.proxy_server).toBe("");
@@ -290,13 +332,13 @@ describe("指纹浏览器启动器", () => {
 
   it("侧栏分组切换并在重开后恢复", async () => {
     await click("group-team-a");
-    await expect(byId("page-title")).toHaveText("team-a");
-    await expect(byId("visible-count")).toHaveText("2 个环境");
+    await expectText("page-title", "team-a");
+    await expectText("visible-count", "2 个环境");
     await browser.refresh();
     await waitForApp();
-    await expect(byId("page-title")).toHaveText("team-a");
+    await expectText("page-title", "team-a");
     await click("group-all");
-    await expect(byId("page-title")).toHaveText("全部环境");
+    await expectText("page-title", "全部环境");
   });
 
   it("主题切换为深色并在重开后保持", async () => {
