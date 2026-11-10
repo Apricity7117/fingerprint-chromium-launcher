@@ -107,7 +107,6 @@ const handlers: Record<string, (args: Record<string, unknown>) => unknown> = {
     return null;
   },
   get_running_status: () => runningStatus(),
-  import_legacy_data: () => ({ added: 0, skipped: profiles.length, settings_imported: false }),
 };
 
 export async function mockInvoke<T>(cmd: string, args: Record<string, unknown> = {}): Promise<T> {

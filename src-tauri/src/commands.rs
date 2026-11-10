@@ -3,7 +3,7 @@
 
 use std::collections::HashMap;
 use std::fs;
-use std::path::{Path, PathBuf};
+use std::path::PathBuf;
 use std::sync::{Mutex, MutexGuard, PoisonError};
 use std::time::{Duration, SystemTime};
 
@@ -14,8 +14,8 @@ use crate::config::DEFAULTS;
 use crate::fingerprint;
 use crate::fsutil::expand_tilde;
 use crate::models::{
-    ChromiumInfo, CommandPreview, DeleteResult, ImportResult, InstanceStatus, LaunchResult,
-    Profile, Recommendation, Settings,
+    ChromiumInfo, CommandPreview, DeleteResult, InstanceStatus, LaunchResult, Profile,
+    Recommendation, Settings,
 };
 use crate::preferences;
 use crate::process::{self, Detector};
@@ -257,18 +257,4 @@ pub async fn stop_profile(app: AppHandle, id: String) -> CmdResult<()> {
 #[tauri::command]
 pub async fn get_running_status(app: AppHandle) -> CmdResult<HashMap<String, InstanceStatus>> {
     blocking(app, |state| state.running_status()).await
-}
-
-#[tauri::command]
-pub async fn import_legacy_data(
-    app: AppHandle,
-    profiles_path: String,
-    import_settings: bool,
-) -> CmdResult<ImportResult> {
-    blocking(app, move |state| {
-        state
-            .store()
-            .import_legacy(Path::new(&profiles_path), import_settings)
-    })
-    .await
 }

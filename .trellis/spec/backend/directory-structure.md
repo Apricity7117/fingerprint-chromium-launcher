@@ -8,7 +8,7 @@
 |---|---|
 | `src/lib.rs` | 声明模块、注册插件（log / dialog / clipboard-manager）、`setup` 中按 `app_data_dir` 构造 `AppState`、注册 commands |
 | `src/commands.rs` | `AppState`（业务方法）+ `#[tauri::command]` 薄包装 |
-| `src/store.rs` | `profiles.json` / `settings.json` 读写、CRUD、旧版导入 |
+| `src/store.rs` | `profiles.json` / `settings.json` 读写、CRUD |
 | `src/models.rs` | 与前端共享的数据结构（serde，字段 snake_case） |
 | `src/config.rs` | `include_str!` 嵌入 `configs/*.json`，`LazyLock` 全局只读 |
 | `src/chromium.rs` | 版本检测、数据目录命名、启动参数构建、命令展示（启动与预览共用） |

@@ -166,14 +166,6 @@ pub struct DeleteResult {
     pub errors: Vec<String>,
 }
 
-/// 旧版数据导入结果。
-#[derive(Debug, Clone, Default, PartialEq, Serialize)]
-pub struct ImportResult {
-    pub added: usize,
-    pub skipped: usize,
-    pub settings_imported: bool,
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;

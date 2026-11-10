@@ -5,7 +5,6 @@ import type {
   ChromiumInfo,
   CommandPreview,
   DeleteResult,
-  ImportResult,
   LaunchResult,
   Profile,
   Recommendation,
@@ -60,6 +59,4 @@ export const api = {
   launchProfile: (id: string) => call<LaunchResult>("launch_profile", { id }),
   stopProfile: (id: string) => call<null>("stop_profile", { id }),
   getRunningStatus: () => call<RunningStatusMap>("get_running_status"),
-  importLegacyData: (profilesPath: string, importSettings: boolean) =>
-    call<ImportResult>("import_legacy_data", { profilesPath, importSettings }),
 };

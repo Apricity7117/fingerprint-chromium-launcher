@@ -8,7 +8,7 @@ use std::sync::{Mutex, MutexGuard, PoisonError};
 use crate::chromium::data_dir_name;
 use crate::fingerprint::random_seed;
 use crate::fsutil::write_json_atomic;
-use crate::models::{ImportResult, Profile, Settings};
+use crate::models::{Profile, Settings};
 
 /// 应用数据存储，位于 Tauri 的 app_data_dir。
 pub struct Store {
@@ -166,55 +166,6 @@ impl Store {
             Ok(removed)
         })
     }
-
-    /// 导入旧版数据：按 id 去重合并（已存在跳过），可选导入同目录的 settings.json。
-    ///
-    /// Args:
-    ///     profiles_path: 旧版 profiles.json 路径（只读）。
-    ///     import_settings: 是否同时导入同目录 settings.json 中的路径设置。
-    ///
-    /// Returns:
-    ///     新增、跳过数量与设置是否已导入。
-    pub fn import_legacy(
-        &self,
-        profiles_path: &Path,
-        import_settings: bool,
-    ) -> Result<ImportResult, String> {
-        let content = fs::read_to_string(profiles_path)
-            .map_err(|e| format!("读取 {} 失败: {e}", profiles_path.display()))?;
-        let legacy: Vec<Profile> = serde_json::from_str(&content)
-            .map_err(|e| format!("{} 不是有效的环境列表: {e}", profiles_path.display()))?;
-
-        let mut result = self.modify(|profiles| {
-            let mut result = ImportResult::default();
-            for mut profile in legacy {
-                let duplicated = !profile.id.is_empty()
-                    && profiles
-                        .iter()
-                        .any(|p| data_dir_name(&p.id) == data_dir_name(&profile.id));
-                if duplicated {
-                    result.skipped += 1;
-                    continue;
-                }
-                if profile.id.is_empty() {
-                    profile.id = generate_id(profiles);
-                }
-                normalize(&mut profile);
-                profiles.push(profile);
-                result.added += 1;
-            }
-            Ok(result)
-        })?;
-
-        if import_settings {
-            let settings_path = profiles_path.with_file_name("settings.json");
-            if let Some(settings) = read_settings_file(&settings_path) {
-                self.save_settings(&settings)?;
-                result.settings_imported = true;
-            }
-        }
-        Ok(result)
-    }
 }
 
 #[cfg(test)]
@@ -312,51 +263,5 @@ mod tests {
         };
         store.save_settings(&custom).unwrap();
         assert_eq!(store.load_settings(), custom);
-    }
-
-    #[test]
-    fn import_legacy_merges_by_id() {
-        let (dir, store) = store();
-        let legacy_dir = dir.path().join("legacy");
-        fs::create_dir_all(&legacy_dir).unwrap();
-        let legacy_profiles = legacy_dir.join("profiles.json");
-        let legacy_content = json!([
-            {"id": "1111111122222222", "group": "alpha", "name": "one", "fingerprint": 1024,
-             "platform": "macos", "brand": "Chrome", "proxy_server": ""},
-            {"id": "3333333344444444", "group": "", "name": "two", "fingerprint": 1025,
-             "platform": "macos", "disable_encryption": true}
-        ])
-        .to_string();
-        fs::write(legacy_profiles.as_path(), &legacy_content).unwrap();
-        fs::write(
-            legacy_dir.join("settings.json"),
-            json!({"chromium_path": "/legacy/Chromium", "data_dir_prefix": "/legacy/data", "port": 18080})
-                .to_string(),
-        )
-        .unwrap();
-
-        let first = store.import_legacy(&legacy_profiles, true).unwrap();
-        assert_eq!(
-            first,
-            ImportResult {
-                added: 2,
-                skipped: 0,
-                settings_imported: true
-            }
-        );
-        let profiles = store.load_profiles().unwrap();
-        assert_eq!(profiles.len(), 2);
-        assert!(profiles[0].disable_non_proxied_udp);
-        assert!(profiles[1].disable_encryption);
-        assert_eq!(store.load_settings().data_dir_prefix, "/legacy/data");
-
-        let second = store.import_legacy(&legacy_profiles, false).unwrap();
-        assert_eq!(second.added, 0);
-        assert_eq!(second.skipped, 2);
-        assert!(!second.settings_imported);
-        assert_eq!(
-            fs::read_to_string(legacy_profiles.as_path()).unwrap(),
-            legacy_content
-        );
     }
 }
