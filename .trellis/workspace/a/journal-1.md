@@ -49,3 +49,25 @@ Linux apt 改多镜像回退+缓存解决 azure 镜像超时；[macos] 时 ci.ym
 ### Status
 
 [OK] **Completed**
+
+
+## Session 3: 移除旧版数据导入功能
+<!-- trellis-session: v=2 fp=166598fe06d69898 -->
+
+**Date**: 2026-11-10
+**Task**: 移除旧版数据导入功能
+**Branch**: `feat/remove-legacy-import`
+
+### Summary
+
+删除前后端旧版数据导入功能、E2E 导入用例与 fixture；E2E 改用 create_profile 预置分组；README 与 spec 同步去除迁移说明
+
+### Git Commits
+
+| Hash | Message |
+|------|---------|
+| `6e4505f` | 🔥 refactor: 移除旧版数据导入功能 [e2e] |
+
+### Status
+
+[OK] **Completed**
