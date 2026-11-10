@@ -1,0 +1,71 @@
+# 发布：推送 v* tag 时校验版本号 → 复用 build-macos.yml 打包 → 创建 GitHub Release 并上传产物；
+# 含 "-" 的 tag（如 v0.2.0-beta.1）标记为预发布
+name: Release
+
+on:
+  push:
+    tags: ["v*"]
+
+permissions:
+  contents: read
+
+jobs:
+  verify-version:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: 校验 tag 与各处版本号一致
+        run: |
+          TAG_VERSION="${GITHUB_REF_NAME#v}"
+          status=0
+          check() {
+            if [ "$2" != "$TAG_VERSION" ]; then
+              echo "::error file=$1::版本号 $2 与 tag $GITHUB_REF_NAME 不一致"
+              status=1
+            fi
+          }
+          check package.json "$(jq -r .version package.json)"
+          check src-tauri/tauri.conf.json "$(jq -r .version src-tauri/tauri.conf.json)"
+          check src-tauri/Cargo.toml "$(grep -m1 '^version' src-tauri/Cargo.toml | cut -d'"' -f2)"
+          exit "$status"
+
+  build:
+    needs: verify-version
+    uses: ./.github/workflows/build-macos.yml
+
+  release:
+    needs: build
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/download-artifact@v7
+        with:
+          pattern: macos-*
+          path: release
+          merge-multiple: true
+
+      - name: 统一产物文件名
+        run: |
+          VERSION="${GITHUB_REF_NAME#v}"
+          mv release/*.dmg "release/fingerprint-chromium-launcher_${VERSION}_aarch64.dmg"
+          mv release/fingerprint-chromium-launcher-macos.zip "release/fingerprint-chromium-launcher_${VERSION}_aarch64.app.zip"
+          ls -l release
+
+      - name: 创建 Release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          notes=$(cat <<'EOF'
+          仅支持 macOS（Apple Silicon）。应用未签名、未公证，安装后需移除 quarantine 才能打开：
+
+          ```bash
+          xattr -dr com.apple.quarantine "/Applications/Fingerprint Chromium Launcher.app"
+          ```
+          EOF
+          )
+          flags=(--generate-notes --verify-tag)
+          [[ "$GITHUB_REF_NAME" == *-* ]] && flags+=(--prerelease)
+          gh release create "$GITHUB_REF_NAME" release/* \
+            -R "$GITHUB_REPOSITORY" --title "$GITHUB_REF_NAME" --notes "$notes" "${flags[@]}"

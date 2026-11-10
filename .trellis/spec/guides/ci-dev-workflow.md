@@ -68,7 +68,10 @@ gh run view "$RUN_ID" --log-failed | tail -200
 | `ci.yml` | push `feat/**`、`main`（paths 过滤）、手动 | `rust-linux` | 总是 | 开发分支 `cargo fmt` 自动格式化（main 为 `--check`）→ clippy `--all-targets -D warnings` → test → 回推格式化与 `Cargo.lock` |
 | | | `rust-macos` | `[macos]` / input | clippy → test（macOS 进程与 Info.plist 行为） |
 | | | `e2e-linux` | `[e2e]` / input | Xvfb + tauri-driver + WebKitWebDriver 驱动真实应用与 Linux 版 fingerprint-chromium，上传截图 |
-| `build-macos.yml` | 由 `ci.yml` 的 `build-macos` job 调用（`[macos]`）；文件合入 `main` 后也可手动 `gh workflow run` | `build` | `[macos]` / input | Apple Silicon `.app`（zip，artifact `macos-app`）与 `.dmg`（`macos-dmg`） |
+| `build-macos.yml` | 由 `ci.yml` 的 `build-macos` job 调用（`[macos]`）；被 `release.yml` 调用；文件合入 `main` 后也可手动 `gh workflow run` | `build` | `[macos]` / input | Apple Silicon `.app`（zip，artifact `macos-app`）与 `.dmg`（`macos-dmg`） |
+| `release.yml` | push `v*` tag | `verify-version` → `build` → `release` | 总是 | 校验 tag 与 `package.json` / `tauri.conf.json` / `Cargo.toml` 版本一致 → 复用 `build-macos.yml` → 产物改名为 `fingerprint-chromium-launcher_<版本>_aarch64.{dmg,app.zip}` 并 `gh release create`（tag 含 `-` 为预发布） |
+
+发布：三处版本号同步修改并合入 `main` 后，`git tag vX.Y.Z && git push origin vX.Y.Z`。推送 tag 即对外发布，**必须经用户确认**。
 
 前端检查不在 CI 中，由本地负责。
 
