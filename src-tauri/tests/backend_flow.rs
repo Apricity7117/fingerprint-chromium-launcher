@@ -124,7 +124,12 @@ fn full_profile_lifecycle() {
     let launched = state.launch(&profile.id).unwrap();
     assert_eq!(launched.command, preview.display);
     let preferences = fs::read_to_string(dir.join("Default").join("Preferences")).unwrap();
-    assert!(preferences.contains("show_tab_groups"));
+    let preferences: serde_json::Value = serde_json::from_str(&preferences).unwrap();
+    assert_eq!(preferences["bookmark_bar"]["show_tab_groups"], false);
+    assert_eq!(
+        preferences["password_manager"]["biometric_authentication_filling"],
+        false
+    );
 
     assert!(wait_for(Duration::from_secs(5), || {
         state
