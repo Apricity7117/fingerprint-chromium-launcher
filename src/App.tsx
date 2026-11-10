@@ -1,5 +1,5 @@
 import type { RowSelectionState } from "@tanstack/react-table";
-import { ImportIcon, LayoutGridIcon, ListIcon, PlusIcon, RotateCwIcon, SearchIcon } from "lucide-react";
+import { LayoutGridIcon, ListIcon, PlusIcon, RotateCwIcon, SearchIcon } from "lucide-react";
 import { useCallback, useMemo, useState } from "react";
 import { toast } from "sonner";
 
@@ -170,17 +170,11 @@ function LauncherPage() {
     content = (
       <div className="flex flex-col items-center gap-3 rounded-xl border border-dashed py-24 text-center" data-testid="empty-state">
         <h3 className="text-lg font-medium">暂无环境</h3>
-        <p className="text-sm text-muted-foreground">新建一个浏览器环境，或从旧版启动器导入已有数据。</p>
-        <div className="flex gap-2">
-          <Button onClick={() => setForm({ open: true, editing: null })}>
-            <PlusIcon />
-            新建环境
-          </Button>
-          <Button variant="outline" onClick={() => setSettingsOpen(true)}>
-            <ImportIcon />
-            导入旧版数据
-          </Button>
-        </div>
+        <p className="text-sm text-muted-foreground">新建一个浏览器环境开始使用。</p>
+        <Button onClick={() => setForm({ open: true, editing: null })}>
+          <PlusIcon />
+          新建环境
+        </Button>
       </div>
     );
   } else if (visible.length === 0) {
@@ -282,10 +276,6 @@ function LauncherPage() {
         chromiumInfo={chromiumInfo}
         onOpenChange={setSettingsOpen}
         onSaved={() => void reloadSettings()}
-        onImported={() => {
-          void reload();
-          void reloadSettings();
-        }}
       />
       <DeleteProfilesDialog
         targets={deleteTargets}

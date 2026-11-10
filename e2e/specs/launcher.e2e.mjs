@@ -1,13 +1,11 @@
 // 启动器端到端流程：真实应用 + 真实 Linux 版 fingerprint-chromium，数据目录均为临时目录。
 import { $, browser, expect } from "@wdio/globals";
-import crypto from "node:crypto";
 import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 
 const here = path.dirname(fileURLToPath(import.meta.url));
 const screenshotDir = path.resolve(here, "../screenshots");
-const fixtureProfiles = path.resolve(here, "../fixtures/legacy/profiles.json");
 
 const CHROMIUM = requiredEnv("E2E_CHROMIUM");
 const BROWSER_DATA = requiredEnv("E2E_BROWSER_DATA");
@@ -24,7 +22,6 @@ function requiredEnv(name) {
 
 const byId = (id) => $(`[data-testid="${id}"]`);
 const dataDir = (id) => path.join(BROWSER_DATA, `chrome_${id.slice(0, 8)}`);
-const sha256 = (file) => crypto.createHash("sha256").update(fs.readFileSync(file)).digest("hex");
 
 async function click(id) {
   const element = await byId(id);
@@ -315,26 +312,18 @@ describe("指纹浏览器启动器", () => {
     expect(fs.existsSync(dataDir(copy.id))).toBe(false);
   });
 
-  it("导入旧版数据按 ID 去重，且不修改源文件", async () => {
-    const before = sha256(fixtureProfiles);
-    const first = await invoke("import_legacy_data", { profilesPath: fixtureProfiles, importSettings: false });
-    expect(first.ok).toEqual({ added: 3, skipped: 0, settings_imported: false });
+  it("侧栏分组切换并在重开后恢复", async () => {
+    for (const [index, name] of ["e2e-team-1", "e2e-team-2"].entries()) {
+      const created = await invoke("create_profile", {
+        profile: { ...alpha, id: "", name, group: "team-a", fingerprint: 4001 + index },
+      });
+      expect(created.err).toBeUndefined();
+    }
     await browser.refresh();
     await waitForApp();
-    await expectText("group-count-all", "5");
+    await expectText("group-count-all", "4");
     await expectText("group-count-team-a", "2");
-    await expectText("group-count-未分组", "1");
 
-    const imported = (await invoke("list_profiles")).ok.find((item) => item.id === "eeee5555ffff6666");
-    expect(imported.proxy_server).toBe("");
-    expect(imported.disable_encryption).toBe(false);
-
-    const second = await invoke("import_legacy_data", { profilesPath: fixtureProfiles, importSettings: false });
-    expect(second.ok).toEqual({ added: 0, skipped: 3, settings_imported: false });
-    expect(sha256(fixtureProfiles)).toBe(before);
-  });
-
-  it("侧栏分组切换并在重开后恢复", async () => {
     await click("group-team-a");
     await expectText("page-title", "team-a");
     await expectText("visible-count", "2 个环境");

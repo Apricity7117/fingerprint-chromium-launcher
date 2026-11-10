@@ -108,7 +108,7 @@ gh run view "$RUN_ID" --log-failed | tail -200
 
 - 定位元素使用稳定的 `data-testid`，不依赖文案或 CSS 类名。
 - 测试数据隔离：HOME / XDG 目录指向临时目录；浏览器数据目录前缀使用临时目录。
-- WebDriver 无法操作系统原生文件对话框：导入等依赖对话框的流程在 E2E 中直接 `invoke` 对应 command。
+- WebDriver 无法操作系统原生文件对话框：依赖对话框的流程（如路径浏览）在 E2E 中直接填写输入框或 `invoke` 对应 command。
 - 夹具一律为合成数据（虚构名称、示例代理地址），禁止使用真实环境数据。
 - 失败排查先下载截图 artifact：`gh run download "$RUN_ID" -n e2e-screenshots -D /tmp/e2e`（失败用例自动截图 `FAILED-*.png`）。
 - `e2e/` 是独立 pnpm 项目（自有 `pnpm-lock.yaml`）；pnpm 11 需在 `e2e/pnpm-workspace.yaml` 用 `allowBuilds` 显式声明依赖构建脚本（esbuild 允许，Edge / Gecko 驱动下载禁止），否则安装直接失败。

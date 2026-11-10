@@ -67,10 +67,4 @@ export interface DeleteResult {
   errors: string[];
 }
 
-export interface ImportResult {
-  added: number;
-  skipped: number;
-  settings_imported: boolean;
-}
-
 export type ViewMode = "card" | "list";

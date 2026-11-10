@@ -1,11 +1,10 @@
 import { open as openDialog } from "@tauri-apps/plugin-dialog";
-import { FolderOpenIcon, ImportIcon, Loader2Icon } from "lucide-react";
+import { FolderOpenIcon, Loader2Icon } from "lucide-react";
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
 
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Checkbox } from "@/components/ui/checkbox";
 import {
   Dialog,
   DialogContent,
@@ -16,7 +15,6 @@ import {
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Separator } from "@/components/ui/separator";
 import { api, errorMessage } from "@/lib/api";
 import { defaults } from "@/lib/presets";
 import type { ChromiumInfo, Settings } from "@/lib/types";
@@ -27,7 +25,6 @@ interface SettingsDialogProps {
   chromiumInfo: ChromiumInfo | null;
   onOpenChange: (open: boolean) => void;
   onSaved: () => void;
-  onImported: () => void;
 }
 
 const MODE_TEXT: Record<ChromiumInfo["flag_mode"], string> = {
@@ -61,13 +58,11 @@ function SettingsForm({
   chromiumInfo,
   onOpenChange,
   onSaved,
-  onImported,
 }: Omit<SettingsDialogProps, "open" | "settings"> & { settings: Settings }) {
   const [chromiumPath, setChromiumPath] = useState(settings.chromium_path);
   const [dataDirPrefix, setDataDirPrefix] = useState(settings.data_dir_prefix);
   const [info, setInfo] = useState<ChromiumInfo | null>(chromiumInfo);
-  const [importSettings, setImportSettings] = useState(true);
-  const [busy, setBusy] = useState<"save" | "import" | null>(null);
+  const [busy, setBusy] = useState(false);
 
   // 路径变化后防抖检测版本
   useEffect(() => {
@@ -98,7 +93,7 @@ function SettingsForm({
   };
 
   const save = async () => {
-    setBusy("save");
+    setBusy(true);
     try {
       await api.saveSettings({ chromium_path: chromiumPath.trim(), data_dir_prefix: dataDirPrefix.trim() });
       toast.success("全局设置已保存");
@@ -107,30 +102,7 @@ function SettingsForm({
     } catch (error) {
       toast.error(errorMessage(error));
     } finally {
-      setBusy(null);
-    }
-  };
-
-  const importLegacy = async () => {
-    try {
-      const selected = await openDialog({
-        multiple: false,
-        directory: false,
-        title: "选择旧版 profiles.json",
-        filters: [{ name: "JSON", extensions: ["json"] }],
-      });
-      if (typeof selected !== "string") return;
-      setBusy("import");
-      const result = await api.importLegacyData(selected, importSettings);
-      toast.success(
-        `导入完成：新增 ${result.added} 个，跳过 ${result.skipped} 个${result.settings_imported ? "，已同步全局设置" : ""}`,
-      );
-      onImported();
-      onOpenChange(false);
-    } catch (error) {
-      toast.error(`导入失败：${errorMessage(error)}`);
-    } finally {
-      setBusy(null);
+      setBusy(false);
     }
   };
 
@@ -179,33 +151,12 @@ function SettingsForm({
         <p className="text-xs text-muted-foreground">每个环境的数据保存在该目录下的 chrome_&lt;ID 前 8 位&gt; 子目录，支持 ~ 开头。</p>
       </div>
 
-      <Separator />
-
-      <div className="space-y-2">
-        <div className="text-sm font-medium">导入旧版数据</div>
-        <p className="text-xs text-muted-foreground">
-          选择旧版启动器 data 目录中的 profiles.json，按 ID 去重合并（已存在的环境跳过），旧文件不会被修改。
-        </p>
-        <label className="flex items-center gap-2 text-sm">
-          <Checkbox
-            checked={importSettings}
-            onCheckedChange={(checked) => setImportSettings(checked === true)}
-            data-testid="import-settings-checkbox"
-          />
-          同时导入同目录的 settings.json（若存在）
-        </label>
-        <Button type="button" variant="outline" disabled={busy !== null} onClick={() => void importLegacy()} data-testid="import-legacy">
-          {busy === "import" ? <Loader2Icon className="animate-spin" /> : <ImportIcon />}
-          选择 profiles.json 并导入
-        </Button>
-      </div>
-
       <DialogFooter>
         <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
           取消
         </Button>
-        <Button type="submit" disabled={busy !== null} data-testid="settings-save">
-          {busy === "save" && <Loader2Icon className="animate-spin" />}
+        <Button type="submit" disabled={busy} data-testid="settings-save">
+          {busy && <Loader2Icon className="animate-spin" />}
           保存设置
         </Button>
       </DialogFooter>

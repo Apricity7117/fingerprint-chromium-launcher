@@ -40,7 +40,6 @@ pub fn run() {
             commands::launch_profile,
             commands::stop_profile,
             commands::get_running_status,
-            commands::import_legacy_data,
         ])
         .run(tauri::generate_context!())
         .expect("启动应用失败");
