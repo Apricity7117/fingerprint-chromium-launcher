@@ -21,9 +21,19 @@
 
 应用由 GitHub Actions 构建，未签名（仅 ad-hoc 签名）、未公证，仅支持 arm64。
 
-**获取构建**：向开发分支推送提交，且提交信息含 `[macos]` 时，`ci.yml` 会调用 `build-macos.yml` 打包；产物为 artifact `macos-app`（`.app` 的 zip）与 `macos-dmg`。也可在文件合入 `main` 后用 `gh workflow run build-macos.yml` 手动触发。
+**正式版本**：从 [Releases](https://github.com/Apricity7117/fingerprint-chromium-launcher/releases) 下载 `fingerprint-chromium-launcher_<版本>_aarch64.dmg`，拖入「应用程序」后执行：
 
-**下载与安装**：
+```bash
+xattr -dr com.apple.quarantine "/Applications/Fingerprint Chromium Launcher.app"
+```
+
+**发布新版本**（维护者）：同步修改 `package.json`、`src-tauri/tauri.conf.json`、`src-tauri/Cargo.toml` 中的版本号并合入 `main`，然后推送 tag，`release.yml` 会自动打包并创建 Release（tag 含 `-` 时为预发布）：
+
+```bash
+git tag v0.1.0 && git push origin v0.1.0
+```
+
+**开发构建**：向开发分支推送提交，且提交信息含 `[macos]` 时，`ci.yml` 会调用 `build-macos.yml` 打包；产物为 artifact `macos-app`（`.app` 的 zip）与 `macos-dmg`。也可在文件合入 `main` 后用 `gh workflow run build-macos.yml` 手动触发。下载与安装：
 
 ```bash
 # run id 取自 Actions 中成功的运行（含 build-macos / build 任务）
