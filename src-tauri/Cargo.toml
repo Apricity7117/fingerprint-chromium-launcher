@@ -1,6 +1,6 @@
 [package]
 name = "fingerprint-chromium-launcher"
-version = "0.1.0"
+version = "0.1.1"
 description = "fingerprint-chromium 桌面启动器"
 authors = ["Apricity"]
 edition = "2024"
